@@ -274,6 +274,11 @@ Retry:
     break;
   }
 
+  case tok::kw_import:
+    Res = ParseCXXImportStatement();
+    SemiError = "import";
+    break;
+
   case tok::kw___if_exists:
   case tok::kw___if_not_exists:
     ProhibitAttributes(Attrs);
@@ -2187,4 +2192,144 @@ void Parser::ParseMicrosoftIfExistsStatement(StmtVector &Stmts) {
       Stmts.push_back(R.get());
   }
   Braces.consumeClose();
+}
+
+StmtResult Parser::ParseCXXImportStatement() {
+  assert(Tok.is(tok::kw_import) && "Not an import stmt!");
+  SourceLocation ImportLoc = ConsumeToken();  // eat the 'import'.
+
+  // Initialize the contextual keywords.
+  if(!Ident_package) {
+    Ident_package = &PP.getIdentifierTable().get("package");
+    Ident_version = &PP.getIdentifierTable().get("version");
+    Ident_file = &PP.getIdentifierTable().get("file");
+    Ident_path = &PP.getIdentifierTable().get("path");
+    Ident_option = &PP.getIdentifierTable().get("option");
+    Ident_recursive = &PP.getIdentifierTable().get("recursive");
+    Ident_final = &PP.getIdentifierTable().get("final");
+  }
+
+  IdentifierInfo *II = Tok.getIdentifierInfo();
+
+  StmtResult Res;
+  if(II == Ident_package) {
+    ConsumeToken(); // eat the 'package'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      return StmtError();
+    }
+
+    ExprResult PackageName = ParseStringLiteralExpression(false); // eat the package name
+    ExprResult PackageVersion;
+    bool isFinal = false;
+
+    if(Tok.isNot(tok::semi)) {
+      II = Tok.getIdentifierInfo();
+      if(II == Ident_version) {
+        ConsumeToken(); // eat the 'version'.
+
+        if(!isTokenStringLiteral()) {
+          Diag(Tok, diag::err_expected) << tok::string_literal;
+          return StmtError();
+        }
+
+        PackageVersion = ParseStringLiteralExpression(false); // eat the version number
+
+        if(Tok.isNot(tok::semi)) {
+          II = Tok.getIdentifierInfo();
+          if(II == Ident_final) {
+            ConsumeToken(); // eat the 'final'.
+            isFinal = true;
+          }
+          else
+          {
+            Diag(Tok, diag::err_unexpected_at);
+            return StmtError();
+          }
+        }
+      }
+      else
+      {
+        Diag(Tok, diag::err_unexpected_at);
+        return StmtError();
+      }
+    }
+    Res = Actions.ActOnImportPackageStmt(ImportLoc, PackageName.get(), PackageVersion.get(), isFinal);
+  }
+  else if(II == Ident_file) {
+    ConsumeToken(); // eat the 'file'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      return StmtError();
+    }
+
+    ExprResult FileName = ParseStringLiteralExpression(false); // eat the file name
+
+    Res = Actions.ActOnImportFileStmt(ImportLoc, FileName.get());
+  }
+  else if(II == Ident_path) {
+    ConsumeToken(); // eat the 'path'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      return StmtError();
+    }
+
+    ExprResult PathName = ParseStringLiteralExpression(false); // eat the path name
+    bool isRecursive = false;
+
+    if(Tok.isNot(tok::semi)) {
+      II = Tok.getIdentifierInfo();
+      if(II == Ident_recursive) {
+        ConsumeToken(); // eat the 'recursive'.
+        isRecursive = true;
+      }
+      else
+      {
+        Diag(Tok, diag::err_unexpected_at);
+        return StmtError();
+      }
+    }
+
+    Res = Actions.ActOnImportPathStmt(ImportLoc, PathName.get(), isRecursive);
+  }
+  else if(II == Ident_option) {
+    ConsumeToken(); // eat the 'option'.
+
+    if(Tok.isNot(tok::identifier)) {
+      Diag(Tok, diag::err_unexpected_at);
+      return StmtError();
+    }
+
+    IdentifierInfo *Key = Tok.getIdentifierInfo();
+    ConsumeToken(); // eat the key
+
+    if(Tok.isNot(tok::equal)) {
+      Diag(Tok, diag::err_unexpected_at);
+      return StmtError();
+    }
+
+    ConsumeToken(); // eat the '='
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      return StmtError();
+    }
+
+    ExprResult Value = ParseStringLiteralExpression(false); // eat the value
+
+    Res = Actions.ActOnImportOptionStmt(ImportLoc, Key, Value.get());
+  }
+  else if(Tok.is(tok::identifier)) {
+    Res = Actions.ActOnImportModuleStmt(ImportLoc);
+    ConsumeToken();
+  }
+  else {
+    Diag(Tok, diag::err_expected) << tok::identifier;
+    return StmtError();
+  }
+
+  return Res;
 }

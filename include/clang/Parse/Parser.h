@@ -138,6 +138,14 @@ class Parser : public CodeCompletionHandler {
   mutable IdentifierInfo *Ident_final;
   mutable IdentifierInfo *Ident_override;
 
+  // C++ Package contextual keywords
+  mutable IdentifierInfo *Ident_package;
+  mutable IdentifierInfo *Ident_version;
+  mutable IdentifierInfo *Ident_file;
+  mutable IdentifierInfo *Ident_path;
+  mutable IdentifierInfo *Ident_option;
+  mutable IdentifierInfo *Ident_recursive;
+
   // C++ type trait keywords that can be reverted to identifiers and still be
   // used as type traits.
   llvm::SmallDenseMap<IdentifierInfo *, tok::TokenKind> RevertibleTypeTraits;
@@ -1745,6 +1753,9 @@ private:
   StmtResult ParseObjCSynchronizedStmt(SourceLocation atLoc);
   StmtResult ParseObjCAutoreleasePoolStmt(SourceLocation atLoc);
 
+  //===--------------------------------------------------------------------===//
+  // C++ Packages
+  StmtResult ParseCXXImportStatement();
 
   //===--------------------------------------------------------------------===//
   // C99 6.7: Declarations.
@@ -2557,7 +2568,7 @@ private:
                                    AccessSpecifier AS = AS_none);
 
   //===--------------------------------------------------------------------===//
-  // Modules
+  // ObjectiveC Modules
   DeclGroupPtrTy ParseModuleImport(SourceLocation AtLoc);
   bool parseMisplacedModuleImport();
   bool tryParseMisplacedModuleImport() {

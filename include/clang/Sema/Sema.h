@@ -3480,6 +3480,12 @@ public:
   StmtResult ActOnFinishSEHFinallyBlock(SourceLocation Loc, Stmt *Block);
   StmtResult ActOnSEHLeaveStmt(SourceLocation Loc, Scope *CurScope);
 
+  StmtResult ActOnImportModuleStmt(SourceLocation Loc);
+  StmtResult ActOnImportPackageStmt(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal);
+  StmtResult ActOnImportFileStmt(SourceLocation Loc, Expr *FileName);
+  StmtResult ActOnImportPathStmt(SourceLocation Loc, Expr* PathName, bool isRecursive);
+  StmtResult ActOnImportOptionStmt(SourceLocation Loc, IdentifierInfo* Key, Expr* Value);
+
   void DiagnoseReturnInConstructorExceptionHandler(CXXTryStmt *TryBlock);
 
   bool ShouldWarnIfUnusedFileScopedDecl(const DeclaratorDecl *D) const;

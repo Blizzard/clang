@@ -527,6 +527,12 @@ struct AdditionalKeywords {
   AdditionalKeywords(IdentifierTable &IdentTable) {
     kw_final = &IdentTable.get("final");
     kw_override = &IdentTable.get("override");
+    //kw_package = &IdentTable.get("package");
+    kw_version = &IdentTable.get("version");
+    kw_file = &IdentTable.get("file");
+    kw_path = &IdentTable.get("path");
+    //kw_option = &IdentTable.get("option");
+    kw_recursive = &IdentTable.get("recursive");
     kw_in = &IdentTable.get("in");
     kw_CF_ENUM = &IdentTable.get("CF_ENUM");
     kw_CF_OPTIONS = &IdentTable.get("CF_OPTIONS");
@@ -570,6 +576,12 @@ struct AdditionalKeywords {
   // Context sensitive keywords.
   IdentifierInfo *kw_final;
   IdentifierInfo *kw_override;
+  //IdentifierInfo *kw_package;
+  IdentifierInfo *kw_version;
+  IdentifierInfo *kw_file;
+  IdentifierInfo *kw_path;
+  //IdentifierInfo *kw_option;
+  IdentifierInfo *kw_recursive;
   IdentifierInfo *kw_in;
   IdentifierInfo *kw_CF_ENUM;
   IdentifierInfo *kw_CF_OPTIONS;

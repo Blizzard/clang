@@ -474,6 +474,12 @@ void Parser::Initialize() {
   Ident_final = nullptr;
   Ident_sealed = nullptr;
   Ident_override = nullptr;
+  Ident_package = nullptr;
+  Ident_version = nullptr;
+  Ident_file = nullptr;
+  Ident_path = nullptr;
+  Ident_option = nullptr;
+  Ident_recursive = nullptr;
 
   Ident_super = &PP.getIdentifierTable().get("super");
 
@@ -787,6 +793,13 @@ Parser::ParseExternalDeclaration(ParsedAttributesWithRange &attrs,
       return Actions.ConvertDeclToDeclGroup(
                   ParseExplicitInstantiation(Declarator::FileContext,
                                              ExternLoc, TemplateLoc, DeclEnd));
+    }
+    goto dont_know;
+
+  case tok::kw_import:
+    if(getLangOpts().CPlusPlus) {
+      ParseCXXImportStatement();
+      return DeclGroupPtrTy();
     }
     goto dont_know;
 

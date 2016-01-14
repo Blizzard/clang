@@ -3931,3 +3931,42 @@ StmtResult Sema::ActOnCapturedRegionEnd(Stmt *S) {
 
   return Res;
 }
+
+StmtResult Sema::ActOnImportModuleStmt(SourceLocation Loc) {
+  llvm::outs() << "Found module import\n";
+  return new (Context) NullStmt(Loc, false);
+}
+
+StmtResult Sema::ActOnImportPackageStmt(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal) {
+  llvm::outs() << "Found package import for package '" << cast<StringLiteral>(PackageName)->getString() << "'";
+  if(PackageVersion)
+  {
+    llvm::outs() << " with version '" << cast<StringLiteral>(PackageVersion)->getString() << "'";
+    if(isFinal)
+    {
+      llvm::outs() << " and final";
+    }
+  }
+  llvm::outs() << "\n";
+
+  return new (Context) NullStmt(Loc, false);
+}
+
+StmtResult Sema::ActOnImportFileStmt(SourceLocation Loc, Expr *FileName) {
+  llvm::outs() << "Found file import for file '" << cast<StringLiteral>(FileName)->getString() << "'\n";
+  return new (Context) NullStmt(Loc, false);
+}
+
+StmtResult Sema::ActOnImportPathStmt(SourceLocation Loc, Expr* PathName, bool isRecursive) {
+  llvm::outs() << "Found path import for path '" << cast<StringLiteral>(PathName)->getString() << "'";
+  if(isRecursive) {
+    llvm::outs() << " recursive";
+  }
+  llvm::outs() << "\n";
+  return new (Context) NullStmt(Loc, false);
+}
+
+StmtResult Sema::ActOnImportOptionStmt(SourceLocation Loc, IdentifierInfo* Key, Expr* Value) {
+  llvm::outs() << "Found import option '" << Key->getName() << "' = '" << cast<StringLiteral>(Value)->getString() << "'";
+  return new (Context) NullStmt(Loc, false);
+}
