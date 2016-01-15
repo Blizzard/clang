@@ -1754,10 +1754,6 @@ private:
   StmtResult ParseObjCAutoreleasePoolStmt(SourceLocation atLoc);
 
   //===--------------------------------------------------------------------===//
-  // C++ Packages
-  StmtResult ParseCXXImportStatement();
-
-  //===--------------------------------------------------------------------===//
   // C99 6.7: Declarations.
 
   /// A context for parsing declaration specifiers.  TODO: flesh this
@@ -2357,6 +2353,11 @@ private:
                            ParsedAttributes& attrs,
                            BalancedDelimiterTracker &Tracker);
   Decl *ParseLinkage(ParsingDeclSpec &DS, unsigned Context);
+
+  Decl *ParseImportDirective(unsigned Context,
+                             SourceLocation &DeclEnd,
+                             ParsedAttributesWithRange &attrs);
+
   Decl *ParseUsingDirectiveOrDeclaration(unsigned Context,
                                          const ParsedTemplateInfo &TemplateInfo,
                                          SourceLocation &DeclEnd,

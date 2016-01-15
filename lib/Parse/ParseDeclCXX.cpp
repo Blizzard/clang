@@ -375,6 +375,190 @@ Decl *Parser::ParseLinkage(ParsingDeclSpec &DS, unsigned Context) {
                      : nullptr;
 }
 
+/// ParseImportDirective - Parse C++ import-directive
+/// Assumes that current token is 'import'.
+Decl *Parser::ParseImportDirective(unsigned Context,
+  SourceLocation &DeclEnd,
+  ParsedAttributesWithRange &attrs)
+{
+  assert(Tok.is(tok::kw_import) && "Not an import stmt!");
+  SourceLocation ImportLoc = ConsumeToken();  // eat the 'import'.
+
+                                              // Initialize the contextual keywords.
+  if(!Ident_package) {
+    Ident_package = &PP.getIdentifierTable().get("package");
+    Ident_version = &PP.getIdentifierTable().get("version");
+    Ident_file = &PP.getIdentifierTable().get("file");
+    Ident_path = &PP.getIdentifierTable().get("path");
+    Ident_option = &PP.getIdentifierTable().get("option");
+    Ident_recursive = &PP.getIdentifierTable().get("recursive");
+    Ident_final = &PP.getIdentifierTable().get("final");
+  }
+
+  IdentifierInfo *II = Tok.getIdentifierInfo();
+
+  Decl *Res = nullptr;
+  if(II == Ident_package) {
+    ConsumeToken(); // eat the 'package'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    ExprResult PackageName = ParseStringLiteralExpression(false); // eat the package name
+    ExprResult PackageVersion;
+    bool isFinal = false;
+
+    if(Tok.isNot(tok::semi)) {
+      II = Tok.getIdentifierInfo();
+      if(II == Ident_version) {
+        ConsumeToken(); // eat the 'version'.
+
+        if(!isTokenStringLiteral()) {
+          Diag(Tok, diag::err_expected) << tok::string_literal;
+          SkipUntil(tok::semi);
+          return nullptr;
+        }
+
+        PackageVersion = ParseStringLiteralExpression(false); // eat the version number
+
+        if(Tok.isNot(tok::semi)) {
+          II = Tok.getIdentifierInfo();
+          if(II == Ident_final) {
+            ConsumeToken(); // eat the 'final'.
+            isFinal = true;
+          }
+          else
+          {
+            Diag(Tok, diag::err_unexpected_at);
+            SkipUntil(tok::semi);
+            return nullptr;
+          }
+        }
+      }
+      else
+      {
+        Diag(Tok, diag::err_unexpected_at);
+        SkipUntil(tok::semi);
+        return nullptr;
+      }
+    }
+
+    // Eat ';'.
+    DeclEnd = Tok.getLocation();
+    if(ExpectAndConsume(tok::semi))
+      SkipUntil(tok::semi);
+
+    Res = Actions.ActOnImportPackageDirective(ImportLoc, PackageName.get(), PackageVersion.get(), isFinal);
+  }
+  else if(II == Ident_file) {
+    ConsumeToken(); // eat the 'file'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    ExprResult FileName = ParseStringLiteralExpression(false); // eat the file name
+
+    // Eat ';'.
+    DeclEnd = Tok.getLocation();
+    if(ExpectAndConsume(tok::semi))
+      SkipUntil(tok::semi);
+
+    Res = Actions.ActOnImportFileDirective(ImportLoc, FileName.get());
+  }
+  else if(II == Ident_path) {
+    ConsumeToken(); // eat the 'path'.
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    ExprResult PathName = ParseStringLiteralExpression(false); // eat the path name
+    bool isRecursive = false;
+
+    if(Tok.isNot(tok::semi)) {
+      II = Tok.getIdentifierInfo();
+      if(II == Ident_recursive) {
+        ConsumeToken(); // eat the 'recursive'.
+        isRecursive = true;
+      }
+      else
+      {
+        Diag(Tok, diag::err_unexpected_at);
+        SkipUntil(tok::semi);
+        return nullptr;
+      }
+    }
+
+    // Eat ';'.
+    DeclEnd = Tok.getLocation();
+    if(ExpectAndConsume(tok::semi))
+      SkipUntil(tok::semi);
+
+    Res = Actions.ActOnImportPathDirective(ImportLoc, PathName.get(), isRecursive);
+  }
+  else if(II == Ident_option) {
+    ConsumeToken(); // eat the 'option'.
+
+    if(Tok.isNot(tok::identifier)) {
+      Diag(Tok, diag::err_unexpected_at);
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    IdentifierInfo *Key = Tok.getIdentifierInfo();
+    ConsumeToken(); // eat the key
+
+    if(Tok.isNot(tok::equal)) {
+      Diag(Tok, diag::err_unexpected_at);
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    ConsumeToken(); // eat the '='
+
+    if(!isTokenStringLiteral()) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      SkipUntil(tok::semi);
+      return nullptr;
+    }
+
+    ExprResult Value = ParseStringLiteralExpression(false); // eat the value
+
+    // Eat ';'.
+    DeclEnd = Tok.getLocation();
+    if(ExpectAndConsume(tok::semi))
+      SkipUntil(tok::semi);
+
+    Res = Actions.ActOnImportOptionDirective(ImportLoc, Key, Value.get());
+  }
+  else if(Tok.is(tok::identifier)) {
+    IdentifierInfo *Module = Tok.getIdentifierInfo();
+    ConsumeToken(); // eat the identifier
+
+    // Eat ';'.
+    DeclEnd = Tok.getLocation();
+    if(ExpectAndConsume(tok::semi))
+      SkipUntil(tok::semi);
+
+    Res = Actions.ActOnImportModuleDirective(ImportLoc);
+  }
+  else {
+    Diag(Tok, diag::err_expected) << tok::identifier;
+    SkipUntil(tok::semi);
+    return nullptr;
+  }
+
+  return Res;
+}
+
 /// ParseUsingDirectiveOrDeclaration - Parse C++ using using-declaration or
 /// using-directive. Assumes that current token is 'using'.
 Decl *Parser::ParseUsingDirectiveOrDeclaration(unsigned Context,

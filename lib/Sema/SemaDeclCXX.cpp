@@ -7538,6 +7538,45 @@ static bool TryNamespaceTypoCorrection(Sema &S, LookupResult &R, Scope *Sc,
   return false;
 }
 
+Decl * Sema::ActOnImportModuleDirective(SourceLocation Loc) {
+  llvm::outs() << "Found module import\n";
+  return nullptr;
+}
+
+Decl * Sema::ActOnImportPackageDirective(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal) {
+  llvm::outs() << "Found package import for package '" << cast<StringLiteral>(PackageName)->getString() << "'";
+  if(PackageVersion)
+  {
+    llvm::outs() << " with version '" << cast<StringLiteral>(PackageVersion)->getString() << "'";
+    if(isFinal)
+    {
+      llvm::outs() << " and final";
+    }
+  }
+  llvm::outs() << "\n";
+
+  return nullptr;
+}
+
+Decl * Sema::ActOnImportFileDirective(SourceLocation Loc, Expr *FileName) {
+  llvm::outs() << "Found file import for file '" << cast<StringLiteral>(FileName)->getString() << "'\n";
+  return nullptr;
+}
+
+Decl * Sema::ActOnImportPathDirective(SourceLocation Loc, Expr* PathName, bool isRecursive) {
+  llvm::outs() << "Found path import for path '" << cast<StringLiteral>(PathName)->getString() << "'";
+  if(isRecursive) {
+    llvm::outs() << " recursive";
+  }
+  llvm::outs() << "\n";
+  return nullptr;
+}
+
+Decl * Sema::ActOnImportOptionDirective(SourceLocation Loc, IdentifierInfo* Key, Expr* Value) {
+  llvm::outs() << "Found import option '" << Key->getName() << "' = '" << cast<StringLiteral>(Value)->getString() << "'";
+  return nullptr;
+}
+
 Decl *Sema::ActOnUsingDirective(Scope *S,
                                           SourceLocation UsingLoc,
                                           SourceLocation NamespcLoc,

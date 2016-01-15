@@ -743,6 +743,7 @@ Parser::ParseExternalDeclaration(ParsedAttributesWithRange &attrs,
   case tok::kw_export:    // As in 'export template'
   case tok::kw_static_assert:
   case tok::kw__Static_assert:
+  case tok::kw_import:
     // A function definition cannot start with any of these keywords.
     {
       SourceLocation DeclEnd;
@@ -793,13 +794,6 @@ Parser::ParseExternalDeclaration(ParsedAttributesWithRange &attrs,
       return Actions.ConvertDeclToDeclGroup(
                   ParseExplicitInstantiation(Declarator::FileContext,
                                              ExternLoc, TemplateLoc, DeclEnd));
-    }
-    goto dont_know;
-
-  case tok::kw_import:
-    if(getLangOpts().CPlusPlus) {
-      ParseCXXImportStatement();
-      return DeclGroupPtrTy();
     }
     goto dont_know;
 

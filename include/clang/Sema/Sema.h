@@ -3480,12 +3480,6 @@ public:
   StmtResult ActOnFinishSEHFinallyBlock(SourceLocation Loc, Stmt *Block);
   StmtResult ActOnSEHLeaveStmt(SourceLocation Loc, Scope *CurScope);
 
-  StmtResult ActOnImportModuleStmt(SourceLocation Loc);
-  StmtResult ActOnImportPackageStmt(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal);
-  StmtResult ActOnImportFileStmt(SourceLocation Loc, Expr *FileName);
-  StmtResult ActOnImportPathStmt(SourceLocation Loc, Expr* PathName, bool isRecursive);
-  StmtResult ActOnImportOptionStmt(SourceLocation Loc, IdentifierInfo* Key, Expr* Value);
-
   void DiagnoseReturnInConstructorExceptionHandler(CXXTryStmt *TryBlock);
 
   bool ShouldWarnIfUnusedFileScopedDecl(const DeclaratorDecl *D) const;
@@ -4125,6 +4119,12 @@ public:
   /// \brief Determine whether Ctor is an initializer-list constructor, as
   /// defined in [dcl.init.list]p2.
   bool isInitListConstructor(const CXXConstructorDecl *Ctor);
+
+  Decl *ActOnImportModuleDirective(SourceLocation Loc);
+  Decl *ActOnImportPackageDirective(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal);
+  Decl *ActOnImportFileDirective(SourceLocation Loc, Expr *FileName);
+  Decl *ActOnImportPathDirective(SourceLocation Loc, Expr* PathName, bool isRecursive);
+  Decl *ActOnImportOptionDirective(SourceLocation Loc, IdentifierInfo* Key, Expr* Value);
 
   Decl *ActOnUsingDirective(Scope *CurScope,
                             SourceLocation UsingLoc,
