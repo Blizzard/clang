@@ -898,6 +898,9 @@ void Preprocessor::HandleDirective(Token &Result) {
       if (getLangOpts().Modules)
         return HandleMacroPrivateDirective(Result);
       break;
+
+    case tok::pp_using:
+      return HandleUsingDirective(Result);
     }
     break;
   }
@@ -1865,6 +1868,12 @@ void Preprocessor::HandleMicrosoftImportDirective(Token &Tok) {
 
   // Read tokens until we get to the end of the directive.  Note that the 
   // directive can be split over multiple lines using the backslash character.
+  DiscardUntilEndOfDirective();
+}
+
+/// HandleUsingDirective - Implements \#using for packages
+void Preprocessor::HandleUsingDirective(Token &Tok) {
+  llvm::outs() << "Found a #using directive\n";
   DiscardUntilEndOfDirective();
 }
 

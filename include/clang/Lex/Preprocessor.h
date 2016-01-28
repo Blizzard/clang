@@ -1848,6 +1848,8 @@ private:
   void HandleImportDirective(SourceLocation HashLoc, Token &Tok);
   void HandleMicrosoftImportDirective(Token &Tok);
 
+  void HandleUsingDirective(Token &Tok);
+
 public:
   // Module inclusion testing.
   /// \brief Find the module that owns the source or header file that

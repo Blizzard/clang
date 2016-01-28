@@ -112,6 +112,9 @@ PPKEYWORD(unassert)
 PPKEYWORD(__public_macro)
 PPKEYWORD(__private_macro)
 
+// Package extension
+PPKEYWORD(using)
+
 //===----------------------------------------------------------------------===//
 // Language keywords.
 //===----------------------------------------------------------------------===//
