@@ -1975,7 +1975,7 @@ void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
 void Preprocessor::HandleUsingDirective(Token &Tok) {
   Lex(Tok); // eat the 'using'
 
-  llvm::outs() << "Found a #using directive\n";
+  //llvm::outs() << "Found a #using directive\n";
   
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
@@ -2001,19 +2001,91 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       llvm::outs() << " version '" << entry.Version << "'";
     if(!entry.Includes.empty())
     {
-      llvm::outs() << "Include files:\n";
+      llvm::outs() << "\nInclude files:\n";
       for(const auto& include : entry.Includes) {
         llvm::outs() << include << "\n";
       }
     }
     if(!entry.Modules.empty())
     {
-      llvm::outs() << "Modules:\n";
+      llvm::outs() << "\nModules:\n";
       for(const auto& module : entry.Modules) {
         llvm::outs() << module->getName().str() << "\n";
       }
     }
     llvm::outs() << "\n";
+  }
+  else if(II == Ident_path) {
+    Lex(Tok); // eat the 'path'
+
+    if(!tok::isStringLiteral(Tok.getKind())) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    bool recursive = false;
+    std::string pathName = getSpelling(Tok);
+    pathName = pathName.substr(1, pathName.size() - 2);
+    Lex(Tok); // eat the path
+
+    if(Tok.getKind() == tok::identifier) {
+      IdentifierInfo *Identifier = Tok.getIdentifierInfo();
+      if(Identifier == Ident_recursive) {
+        Lex(Tok); // eat the 'recursive'
+        recursive = true;
+      }
+      else {
+        Diag(Tok, diag::err_expected) << tok::identifier;
+        DiscardUntilEndOfDirective();
+        return;
+      }
+    }
+    else if(Tok.getKind() == tok::eod) {
+    }
+    else {
+      Diag(Tok, diag::err_expected) << tok::identifier;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    llvm::outs() << "Found a #using path directive for path '" << pathName << "'";
+    if(recursive) {
+      llvm::outs() << " recursive";
+    }
+    llvm::outs() << "\n";
+  }
+  else if(II == Ident_option) {
+    Lex(Tok); // eat the 'option'
+
+    if(Tok.getKind() != tok::identifier) {
+      Diag(Tok, diag::err_expected) << tok::identifier;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    IdentifierInfo *Key = Tok.getIdentifierInfo();
+    Lex(Tok); // eat the Key
+
+    if(Tok.getKind() != tok::equal) {
+      Diag(Tok, diag::err_expected) << tok::equal;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    Lex(Tok); // eat the '='
+
+    if(!tok::isStringLiteral(Tok.getKind())) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    std::string Value = getSpelling(Tok);
+    Value = Value.substr(1, Value.size() - 2);
+    Lex(Tok); // eat the Value
+
+    llvm::outs() << "Found a #using option directive Key = '" << Key->getName().str() << "' Value = '" << Value << "'\n";
   }
 }
 
