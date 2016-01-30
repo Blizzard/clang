@@ -1871,10 +1871,150 @@ void Preprocessor::HandleMicrosoftImportDirective(Token &Tok) {
   DiscardUntilEndOfDirective();
 }
 
+void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
+  switch(Tok.getKind()) {
+  case tok::l_paren:
+    {
+      Lex(Tok); // eat the '('
+
+      bool done = false;
+      while(!done) {
+        switch(Tok.getKind()) {
+        case tok::string_literal:
+        {
+          std::string filename = getSpelling(Tok);
+          entry.Includes.push_back(filename.substr(1, filename.size() - 2));
+          Lex(Tok); // eat the include file name
+
+          if(Tok.getKind() != tok::comma && Tok.getKind() != tok::r_paren) {
+            Diag(Tok, diag::err_expected) << tok::comma;
+            DiscardUntilEndOfDirective();
+            return;
+          }
+          if(Tok.getKind() != tok::r_paren) {
+            Lex(Tok); // eat the comma
+          }
+        }
+        break;
+        case tok::r_paren:
+          Lex(Tok); // eat the ')'
+          done = true;
+          break;
+        default:
+          Diag(Tok, diag::err_expected) << tok::string_literal;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+      }
+    }
+    break;
+  case tok::l_square:
+    {
+      Lex(Tok); // eat the '['
+
+      bool done = false;
+      while(!done) {
+        switch(Tok.getKind()) {
+        case tok::identifier:
+          entry.Modules.push_back(Tok.getIdentifierInfo());
+          Lex(Tok); // eat the module name
+
+          if(Tok.getKind() != tok::comma && Tok.getKind() != tok::r_square) {
+            Diag(Tok, diag::err_expected) << tok::comma;
+            DiscardUntilEndOfDirective();
+            return;
+          }
+          if(Tok.getKind() != tok::r_square) {
+            Lex(Tok); // eat the comma
+          }
+          break;
+        case tok::r_square:
+          Lex(Tok); // eat the ']'
+          done = true;
+          break;
+        default:
+          Diag(Tok, diag::err_expected) << tok::identifier;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+      }
+    }
+    break;
+  case tok::identifier:
+    {
+      IdentifierInfo *II = Tok.getIdentifierInfo();
+      if(II == Ident_version) {
+        Lex(Tok); // eat the 'version'
+
+        if(!tok::isStringLiteral(Tok.getKind())) {
+          Diag(Tok, diag::err_expected) << tok::string_literal;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+
+        entry.Version = getSpelling(Tok);
+        entry.Version = entry.Version.substr(1, entry.Version.size() - 2);
+        Lex(Tok); // eat the version number
+      }
+      else
+      {
+        Diag(Tok, diag::err_pp_invalid_directive);
+        DiscardUntilEndOfDirective();
+        return;
+      }
+    }
+    break;
+  default:
+    Diag(Tok, diag::err_pp_invalid_directive);
+    DiscardUntilEndOfDirective();
+    return;
+  }
+}
+
 /// HandleUsingDirective - Implements \#using for packages
 void Preprocessor::HandleUsingDirective(Token &Tok) {
+  Lex(Tok); // eat the 'using'
+
   llvm::outs() << "Found a #using directive\n";
-  DiscardUntilEndOfDirective();
+  
+  IdentifierInfo *II = Tok.getIdentifierInfo();
+
+  if(II == Ident_package) {
+    Lex(Tok); // eat the 'package'
+
+    if(!tok::isStringLiteral(Tok.getKind())) {
+      Diag(Tok, diag::err_expected) << tok::string_literal;
+      DiscardUntilEndOfDirective();
+      return;
+    }
+
+    PackageEntry entry;
+    entry.Name = getSpelling(Tok);
+    entry.Name = entry.Name.substr(1, entry.Name.size() - 2);
+    Lex(Tok); // eat the package name
+    while(Tok.getKind() != tok::eod) {
+      HandleUsingPackageEntry(Tok, entry);
+    }
+
+    llvm::outs() << "Found a #using package directive for package '" << entry.Name << "'";
+    if(!entry.Version.empty())
+      llvm::outs() << " version '" << entry.Version << "'";
+    if(!entry.Includes.empty())
+    {
+      llvm::outs() << "Include files:\n";
+      for(const auto& include : entry.Includes) {
+        llvm::outs() << include << "\n";
+      }
+    }
+    if(!entry.Modules.empty())
+    {
+      llvm::outs() << "Modules:\n";
+      for(const auto& module : entry.Modules) {
+        llvm::outs() << module->getName().str() << "\n";
+      }
+    }
+    llvm::outs() << "\n";
+  }
 }
 
 /// HandleImportDirective - Implements \#import.

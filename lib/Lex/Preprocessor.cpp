@@ -137,6 +137,12 @@ Preprocessor::Preprocessor(IntrusiveRefCntPtr<PreprocessorOptions> PPOpts,
     Ident_GetExceptionInfo = Ident_GetExceptionCode = nullptr;
     Ident_AbnormalTermination = nullptr;
   }
+
+  Ident_package     = getIdentifierInfo("package");
+  Ident_version     = getIdentifierInfo("version");
+  Ident_path        = getIdentifierInfo("path");
+  Ident_option      = getIdentifierInfo("option");
+  Ident_recursive   = getIdentifierInfo("recursive");
 }
 
 Preprocessor::~Preprocessor() {

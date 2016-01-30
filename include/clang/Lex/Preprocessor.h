@@ -140,6 +140,13 @@ class Preprocessor : public RefCountedBase<Preprocessor> {
   IdentifierInfo *Ident__has_cpp_attribute;        // __has_cpp_attribute
   IdentifierInfo *Ident__has_declspec;             // __has_declspec_attribute
 
+  // C++ Package contextual keywords
+  IdentifierInfo *Ident_package;    // package
+  IdentifierInfo *Ident_version;    // version
+  IdentifierInfo *Ident_path;       // path
+  IdentifierInfo *Ident_option;     // option
+  IdentifierInfo *Ident_recursive;  // recursive
+
   SourceLocation DATELoc, TIMELoc;
   unsigned CounterValue;  // Next __COUNTER__ value.
 
@@ -1848,6 +1855,14 @@ private:
   void HandleImportDirective(SourceLocation HashLoc, Token &Tok);
   void HandleMicrosoftImportDirective(Token &Tok);
 
+  struct PackageEntry
+  {
+    std::string Name;
+    std::string Version;
+    std::vector<std::string> Includes;
+    std::vector<IdentifierInfo*> Modules;
+  };
+  void HandleUsingPackageEntry(Token &Tok, PackageEntry& entry);
   void HandleUsingDirective(Token &Tok);
 
 public:
