@@ -168,7 +168,7 @@ protected:
     AddFakeHeader(HeaderInfo, HeaderPath, SystemHeader);
 
     IntrusiveRefCntPtr<PreprocessorOptions> PPOpts = new PreprocessorOptions();
-    Preprocessor PP(PPOpts, Diags, LangOpts, SourceMgr, HeaderInfo, ModLoader,
+    Preprocessor PP(PPOpts, nullptr, Diags, LangOpts, SourceMgr, HeaderInfo, ModLoader,
                     /*IILookup =*/nullptr,
                     /*OwnsHeaderSearch =*/false);
     PP.Initialize(*Target);
@@ -202,7 +202,7 @@ protected:
     HeaderSearch HeaderInfo(new HeaderSearchOptions, SourceMgr, Diags, 
                             OpenCLLangOpts, Target.get());
 
-    Preprocessor PP(new PreprocessorOptions(), Diags, OpenCLLangOpts, SourceMgr,
+    Preprocessor PP(new PreprocessorOptions(), nullptr, Diags, OpenCLLangOpts, SourceMgr,
                     HeaderInfo, ModLoader, /*IILookup =*/nullptr,
                     /*OwnsHeaderSearch =*/false);
     PP.Initialize(*Target);

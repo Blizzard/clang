@@ -58,6 +58,7 @@ class PreprocessingRecord;
 class ModuleLoader;
 class PTHManager;
 class PreprocessorOptions;
+class FrontendOptions;
 
 /// \brief Stores token information for comparing actual tokens with
 /// predefined values.  Only handles simple tokens and identifiers.
@@ -95,6 +96,7 @@ enum MacroUse {
 /// token expansion, etc.
 class Preprocessor : public RefCountedBase<Preprocessor> {
   IntrusiveRefCntPtr<PreprocessorOptions> PPOpts;
+  FrontendOptions   *FrontendOpts;
   DiagnosticsEngine        *Diags;
   LangOptions       &LangOpts;
   const TargetInfo  *Target;
@@ -651,6 +653,7 @@ class Preprocessor : public RefCountedBase<Preprocessor> {
 
 public:
   Preprocessor(IntrusiveRefCntPtr<PreprocessorOptions> PPOpts,
+               FrontendOptions *FrontendOpts,
                DiagnosticsEngine &diags, LangOptions &opts,
                SourceManager &SM, HeaderSearch &Headers,
                ModuleLoader &TheModuleLoader,

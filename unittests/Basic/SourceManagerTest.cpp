@@ -80,7 +80,7 @@ TEST_F(SourceManagerTest, isBeforeInTranslationUnit) {
   VoidModuleLoader ModLoader;
   HeaderSearch HeaderInfo(new HeaderSearchOptions, SourceMgr, Diags, LangOpts, 
                           &*Target);
-  Preprocessor PP(new PreprocessorOptions(), Diags, LangOpts, SourceMgr,
+  Preprocessor PP(new PreprocessorOptions(), nullptr, Diags, LangOpts, SourceMgr,
                   HeaderInfo, ModLoader,
                   /*IILookup =*/nullptr,
                   /*OwnsHeaderSearch =*/false);

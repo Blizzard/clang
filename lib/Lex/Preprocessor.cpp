@@ -57,12 +57,13 @@ using namespace clang;
 ExternalPreprocessorSource::~ExternalPreprocessorSource() { }
 
 Preprocessor::Preprocessor(IntrusiveRefCntPtr<PreprocessorOptions> PPOpts,
+                           FrontendOptions *FrontendOpts,
                            DiagnosticsEngine &diags, LangOptions &opts,
                            SourceManager &SM, HeaderSearch &Headers,
                            ModuleLoader &TheModuleLoader,
                            IdentifierInfoLookup *IILookup, bool OwnsHeaders,
                            TranslationUnitKind TUKind)
-    : PPOpts(PPOpts), Diags(&diags), LangOpts(opts), Target(nullptr),
+    : PPOpts(PPOpts), FrontendOpts(FrontendOpts), Diags(&diags), LangOpts(opts), Target(nullptr),
       AuxTarget(nullptr), FileMgr(Headers.getFileMgr()), SourceMgr(SM),
       ScratchBuf(new ScratchBuffer(SourceMgr)), HeaderInfo(Headers),
       TheModuleLoader(TheModuleLoader), ExternalSource(nullptr),

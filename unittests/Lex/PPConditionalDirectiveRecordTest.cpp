@@ -95,7 +95,7 @@ TEST_F(PPConditionalDirectiveRecordTest, PPRecAPI) {
   VoidModuleLoader ModLoader;
   HeaderSearch HeaderInfo(new HeaderSearchOptions, SourceMgr, Diags, LangOpts, 
                           Target.get());
-  Preprocessor PP(new PreprocessorOptions(), Diags, LangOpts, SourceMgr,
+  Preprocessor PP(new PreprocessorOptions(), nullptr, Diags, LangOpts, SourceMgr,
                   HeaderInfo, ModLoader,
                   /*IILookup =*/nullptr,
                   /*OwnsHeaderSearch =*/false);

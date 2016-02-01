@@ -695,7 +695,7 @@ std::unique_ptr<ASTUnit> ASTUnit::LoadFromASTFile(
   unsigned Counter;
 
   AST->PP =
-      new Preprocessor(PPOpts, AST->getDiagnostics(), AST->ASTFileLangOpts,
+      new Preprocessor(PPOpts, nullptr, AST->getDiagnostics(), AST->ASTFileLangOpts,
                        AST->getSourceManager(), HeaderInfo, *AST,
                        /*IILookup=*/nullptr,
                        /*OwnsHeaderSearch=*/false);
