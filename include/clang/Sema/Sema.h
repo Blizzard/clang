@@ -4120,12 +4120,6 @@ public:
   /// defined in [dcl.init.list]p2.
   bool isInitListConstructor(const CXXConstructorDecl *Ctor);
 
-  Decl *ActOnImportModuleDirective(SourceLocation Loc);
-  Decl *ActOnImportPackageDirective(SourceLocation Loc, Expr *PackageName, Expr* PackageVersion, bool isFinal);
-  Decl *ActOnImportFileDirective(SourceLocation Loc, Expr *FileName);
-  Decl *ActOnImportPathDirective(SourceLocation Loc, Expr* PathName, bool isRecursive);
-  Decl *ActOnImportOptionDirective(SourceLocation Loc, IdentifierInfo* Key, Expr* Value);
-
   Decl *ActOnUsingDirective(Scope *CurScope,
                             SourceLocation UsingLoc,
                             SourceLocation NamespcLoc,

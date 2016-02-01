@@ -1108,33 +1108,3 @@ bool CapturedStmt::capturesVariable(const VarDecl *Var) const {
 
   return false;
 }
-
-/*
-ImportPackageStmt::ImportPackageStmt(Expr* PackageName, Expr* PackageVersion, bool isFinal) : Stmt(ImportPackageStmtClass), isFinal(isFinal) {
-  StringLiteral *PackageNameLit = cast<StringLiteral>(PackageName);
-  StringRef PackageNameRef = PackageNameLit->getString();
-  this->PackageName = PackageNameRef.str();
-
-  StringLiteral *PackageVersionLit = cast<StringLiteral>(PackageVersion);
-  StringRef PackageVersionRef = PackageVersionLit->getString();
-  this->PackageVersion = PackageVersionRef.str();
-}
-
-ImportFileStmt::ImportFileStmt(Expr* FileName, bool isFinal) : Stmt(ImportFileStmtClass) {
-  StringLiteral *FileNameLit = cast<StringLiteral>(FileName);
-  StringRef FileNameRef = FileNameLit->getString();
-  this->FileName = FileNameRef.str();
-}
-
-ImportPathStmt::ImportPathStmt(Expr* PathName, bool isRecursive) : Stmt(ImportPathStmtClass), isRecursive(isRecursive) {
-  StringLiteral *PathNameLit = cast<StringLiteral>(PathName);
-  StringRef PathNameRef = PathNameLit->getString();
-  this->PathName = PathNameRef.str();
-}
-
-ImportOptionStmt::ImportOptionStmt(Expr* Key, Expr* Value) : Stmt(ImportOptionStmtClass), Key((Stmt*)Key) {
-  StringLiteral *ValueLit = cast<StringLiteral>(Value);
-  StringRef ValueRef = ValueLit->getString();
-  this->Value = ValueRef.str();
-}
-// */

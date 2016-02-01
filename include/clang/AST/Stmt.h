@@ -1331,47 +1331,6 @@ public:
   }
 };
 
-/*
-///
-class ImportPackageStmt : public Stmt {
-  std::string PackageName;
-  std::string PackageVersion;
-  bool isFinal;
-
-public:
-  ImportPackageStmt(Expr* PackageName, Expr* PackageVersion, bool isFinal);
-};
-
-
-///
-class ImportFileStmt : public Stmt {
-  std::string FileName;
-
-public:
-  ImportFileStmt(Expr* FileName, bool isFinal);
-};
-
-
-///
-class ImportPathStmt : public Stmt {
-  std::string PathName;
-  bool isRecursive;
-
-public:
-  ImportPathStmt(Expr* PathName, bool isRecursive);
-};
-
-
-///
-class ImportOptionStmt : public Stmt {
-  Stmt* Key;
-  std::string Value;
-
-public:
-  ImportOptionStmt(Expr* Key, Expr* Value);
-};
-// */
-
 /// ReturnStmt - This represents a return, optionally of an expression:
 ///   return;
 ///   return 4;

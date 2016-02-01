@@ -1476,9 +1476,6 @@ Parser::DeclGroupPtrTy Parser::ParseDeclaration(unsigned Context,
     SingleDecl = ParseUsingDirectiveOrDeclaration(Context, ParsedTemplateInfo(),
                                                   DeclEnd, attrs, &OwnedType);
     break;
-  case tok::kw_import:
-    SingleDecl = ParseImportDirective(Context, DeclEnd, attrs);
-    break;
   case tok::kw_static_assert:
   case tok::kw__Static_assert:
     ProhibitAttributes(attrs);
