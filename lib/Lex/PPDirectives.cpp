@@ -27,6 +27,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SaveAndRestore.h"
+#include "clang/Frontend/FrontendOptions.h"
 using namespace clang;
 
 //===----------------------------------------------------------------------===//
@@ -2049,6 +2050,10 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       return;
     }
 
+    if(FrontendOpts)
+    {
+      FrontendOpts->ExtraInputs.push_back(FrontendInputFile{pathName, IK_CXX});
+    }
     llvm::outs() << "Found a #using path directive for path '" << pathName << "'";
     if(recursive) {
       llvm::outs() << " recursive";

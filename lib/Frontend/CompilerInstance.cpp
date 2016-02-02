@@ -830,16 +830,49 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
   if (getFrontendOpts().ShowStats)
     llvm::EnableStatistics();
 
-  for (const FrontendInputFile &FIF : getFrontendOpts().Inputs) {
-    // Reset the ID tables if we are reusing the SourceManager and parsing
-    // regular files.
-    if (hasSourceManager() && !Act.isModelParsingAction())
-      getSourceManager().clearIDTables();
+  bool InitialInput = true;
+  std::vector<FrontendInputFile> AllInputs;
+  llvm::raw_pwrite_stream* FileList = nullptr;
+  do 
+  {
+    getFrontendOpts().Inputs.insert(getFrontendOpts().Inputs.end(), getFrontendOpts().ExtraInputs.begin(), getFrontendOpts().ExtraInputs.end());
+    getFrontendOpts().ExtraInputs.clear();
 
-    if (Act.BeginSourceFile(*this, FIF)) {
-      Act.Execute();
-      Act.EndSourceFile();
+    for (const FrontendInputFile &FIF : getFrontendOpts().Inputs) {
+      // Reset the ID tables if we are reusing the SourceManager and parsing
+      // regular files.
+      if (hasSourceManager() && !Act.isModelParsingAction())
+        getSourceManager().clearIDTables();
+
+      if(!InitialInput) {
+        if(!FileList) {
+          FileList = createOutputFile("files", false, true, "", "", true);
+        }
+        getFrontendOpts().OutputFile = FIF.getFile();
+        getFrontendOpts().OutputFile += ".o";
+
+        FileList->write('"');
+        FileList->write(getFrontendOpts().OutputFile.c_str(), getFrontendOpts().OutputFile.size());
+        FileList->write('"');
+        FileList->write('\n');
+      }
+
+      if (Act.BeginSourceFile(*this, FIF)) {
+        Act.Execute();
+        Act.EndSourceFile();
+      }
     }
+
+    InitialInput = false;
+    AllInputs.insert(AllInputs.end(), getFrontendOpts().Inputs.begin(), getFrontendOpts().Inputs.end());
+    getFrontendOpts().Inputs.clear();
+  }
+  while(!getFrontendOpts().ExtraInputs.empty());
+
+  getFrontendOpts().Inputs = std::move(AllInputs);
+
+  if(FileList) {
+    FileList->flush();
   }
 
   // Notify the diagnostic client that all files were processed.

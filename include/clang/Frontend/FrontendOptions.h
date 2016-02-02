@@ -209,6 +209,9 @@ public:
   /// The input files and their types.
   std::vector<FrontendInputFile> Inputs;
 
+  /// Extra inputs discovered during processing
+  std::vector<FrontendInputFile> ExtraInputs;
+
   /// The output file, if any.
   std::string OutputFile;
 
