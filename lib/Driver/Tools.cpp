@@ -5539,6 +5539,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back(I->getFilename());
     }
 
+  CmdArgs.push_back("-linker_file_list");
+  CmdArgs.push_back(Args.MakeArgString(C.getLinkerFileList()));
+
   // Finally add the compile command to the compilation.
   if (Args.hasArg(options::OPT__SLASH_fallback) &&
       Output.getType() == types::TY_Object &&
@@ -9535,7 +9538,8 @@ void visualstudio::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   TC.addProfileRTLibs(Args, CmdArgs);
 
-  CmdArgs.push_back("@files");
+  std::string LinkerFileList = "@" + C.getLinkerFileList();
+  CmdArgs.push_back(Args.MakeArgString(LinkerFileList));
 
   // We need to special case some linker paths.  In the case of lld, we need to
   // translate 'lld' into 'lld-link', and in the case of the regular msvc

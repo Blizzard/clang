@@ -1796,6 +1796,9 @@ def working_directory : JoinedOrSeparate<["-"], "working-directory">, Flags<[CC1
 def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option]>,
   Alias<working_directory>;
 
+def linker_file_list : Separate<["-"], "linker_file_list">, Flags<[CC1Option]>,
+  HelpText<"The file used by the linker">;
+
 // Double dash options, which are usually an alias for one of the previous
 // options.
 

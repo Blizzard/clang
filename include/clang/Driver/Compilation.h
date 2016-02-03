@@ -59,6 +59,9 @@ class Compilation {
   llvm::DenseMap<std::pair<const ToolChain *, const char *>,
                  llvm::opt::DerivedArgList *> TCArgs;
 
+  /// File containing a list of all generated outputs
+  std::string LinkerFileListName;
+
   /// Temporary files which should be removed on exit.
   llvm::opt::ArgStringList TempFiles;
 
@@ -117,6 +120,10 @@ public:
   const ArgStringMap &getFailureResultFiles() const {
     return FailureResultFiles;
   }
+
+  const std::string& getLinkerFileList() const { return LinkerFileListName; }
+
+  void setupLinkerFileList(const std::string& FileName);
 
   /// Returns the sysroot path.
   StringRef getSysRoot() const;

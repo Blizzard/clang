@@ -499,6 +499,8 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
   if (!HandleImmediateArgs(*C))
     return C;
 
+  C->setupLinkerFileList(GetTemporaryPath("file_list", ""));
+
   // Construct the list of inputs.
   InputList Inputs;
   BuildInputs(C->getDefaultToolChain(), *TranslatedArgs, Inputs);

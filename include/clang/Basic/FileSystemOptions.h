@@ -25,6 +25,9 @@ public:
   /// \brief If set, paths are resolved as if the working directory was
   /// set to the value of WorkingDir.
   std::string WorkingDir;
+
+  /// \brief File to append extra generated dependencies.
+  std::string LinkerFileList;
 };
 
 } // end namespace clang

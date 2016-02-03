@@ -832,7 +832,20 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
 
   bool InitialInput = true;
   std::vector<FrontendInputFile> AllInputs;
-  llvm::raw_pwrite_stream* FileList = nullptr;
+  std::unique_ptr<llvm::raw_fd_ostream> LinkerFileListStream = nullptr;
+
+  if(!getFileSystemOpts().LinkerFileList.empty())
+  {
+    int WriteFD = -1;
+    auto ec = llvm::sys::fs::openFileForWrite(getFileSystemOpts().LinkerFileList, WriteFD, llvm::sys::fs::F_Append);
+    if(ec)
+    {
+      return false;
+    }
+
+    LinkerFileListStream.reset(new llvm::raw_fd_ostream(WriteFD, true));
+  }
+
   do 
   {
     getFrontendOpts().Inputs.insert(getFrontendOpts().Inputs.end(), getFrontendOpts().ExtraInputs.begin(), getFrontendOpts().ExtraInputs.end());
@@ -845,16 +858,13 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
         getSourceManager().clearIDTables();
 
       if(!InitialInput) {
-        if(!FileList) {
-          FileList = createOutputFile("files", false, true, "", "", true);
-        }
         getFrontendOpts().OutputFile = FIF.getFile();
         getFrontendOpts().OutputFile += ".o";
 
-        FileList->write('"');
-        FileList->write(getFrontendOpts().OutputFile.c_str(), getFrontendOpts().OutputFile.size());
-        FileList->write('"');
-        FileList->write('\n');
+        if(LinkerFileListStream)
+        {
+          *LinkerFileListStream << '"' << getFrontendOpts().OutputFile << "\"\n";
+        }
       }
 
       if (Act.BeginSourceFile(*this, FIF)) {
@@ -870,10 +880,6 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
   while(!getFrontendOpts().ExtraInputs.empty());
 
   getFrontendOpts().Inputs = std::move(AllInputs);
-
-  if(FileList) {
-    FileList->flush();
-  }
 
   // Notify the diagnostic client that all files were processed.
   getDiagnostics().getClient()->finish();

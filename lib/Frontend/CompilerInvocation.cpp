@@ -894,6 +894,7 @@ bool clang::ParseDiagnosticArgs(DiagnosticOptions &Opts, ArgList &Args,
 
 static void ParseFileSystemArgs(FileSystemOptions &Opts, ArgList &Args) {
   Opts.WorkingDir = Args.getLastArgValue(OPT_working_directory);
+  Opts.LinkerFileList = Args.getLastArgValue(OPT_linker_file_list);
 }
 
 /// Parse the argument to the -ftest-module-file-extension

@@ -236,3 +236,8 @@ void Compilation::initCompilationForDiagnostics() {
 StringRef Compilation::getSysRoot() const {
   return getDriver().SysRoot;
 }
+
+void Compilation::setupLinkerFileList(const std::string& FileName) {
+  LinkerFileListName = FileName;
+  addTempFile(getArgs().MakeArgString(LinkerFileListName.c_str()));
+}
