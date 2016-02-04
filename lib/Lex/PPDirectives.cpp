@@ -28,6 +28,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include "clang/Frontend/FrontendOptions.h"
+#include "llvm/ADT/StringSwitch.h"
 using namespace clang;
 
 //===----------------------------------------------------------------------===//
@@ -2053,8 +2054,32 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
     if(FrontendOpts)
     {
       auto pfnAddFile = [this](const std::string& PathName) {
-        InputKind ik = FrontendOptions::getInputKindForExtension(StringRef(PathName).rsplit('.').second);
-        FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
+        // I want to use FrontEndOptions::getInputKindForExtension(), but there are two problems:
+        // 1.) The default case for that is IK_C, which doesn't have the behavior that I want.
+        // 2.) Unit tests have link issues due to undefined symbols, which I do not care to fix.
+        // Therefore, I'm copying the text of FrontEndOptions::getInputKindForExtension() here
+        // and changing the default case to IK_None.
+        InputKind ik = llvm::StringSwitch<InputKind>(StringRef(PathName).rsplit('.').second)
+          .Cases("ast", "pcm", IK_AST)
+          .Case("c", IK_C)
+          .Cases("S", "s", IK_Asm)
+          .Case("i", IK_PreprocessedC)
+          .Case("ii", IK_PreprocessedCXX)
+          .Case("cui", IK_PreprocessedCuda)
+          .Case("m", IK_ObjC)
+          .Case("mi", IK_PreprocessedObjC)
+          .Cases("mm", "M", IK_ObjCXX)
+          .Case("mii", IK_PreprocessedObjCXX)
+          .Cases("C", "cc", "cp", IK_CXX)
+          .Cases("cpp", "CPP", "c++", "cxx", "hpp", IK_CXX)
+          .Case("cl", IK_OpenCL)
+          .Case("cu", IK_CUDA)
+          .Cases("ll", "bc", IK_LLVM_IR)
+          .Default(IK_None);
+
+        if(ik != IK_None) {
+          FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
+        }
       };
       if(llvm::sys::fs::is_directory(pathName)) {
         std::error_code EC;
