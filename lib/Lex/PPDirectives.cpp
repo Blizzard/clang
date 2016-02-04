@@ -2052,7 +2052,32 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
     if(FrontendOpts)
     {
-      FrontendOpts->ExtraInputs.push_back(FrontendInputFile{pathName, IK_CXX});
+      auto pfnAddFile = [this](const std::string& PathName) {
+        InputKind ik = FrontendOptions::getInputKindForExtension(StringRef(PathName).rsplit('.').second);
+        FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
+      };
+      if(llvm::sys::fs::is_directory(pathName)) {
+        std::error_code EC;
+        if(recursive) {
+          for(llvm::sys::fs::recursive_directory_iterator DirIt(pathName, EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
+            if(llvm::sys::fs::is_directory(DirIt->path()))
+              continue;
+
+            pfnAddFile(DirIt->path());
+          }
+        }
+        else {
+          for(llvm::sys::fs::directory_iterator DirIt(pathName, EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
+            if(llvm::sys::fs::is_directory(DirIt->path()))
+              continue;
+
+            pfnAddFile(DirIt->path());
+          }
+        }
+      }
+      else {
+        pfnAddFile(pathName);
+      }
     }
     llvm::outs() << "Found a #using path directive for path '" << pathName << "'";
     if(recursive) {
