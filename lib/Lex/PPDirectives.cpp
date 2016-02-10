@@ -1981,6 +1981,35 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
   
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
+  auto pfnAddFile = [this](const std::string& PathName) {
+    // I want to use FrontEndOptions::getInputKindForExtension(), but there are two problems:
+    // 1.) The default case for that is IK_C, which doesn't have the behavior that I want.
+    // 2.) Unit tests have link issues due to undefined symbols, which I do not care to fix.
+    // Therefore, I'm copying the text of FrontEndOptions::getInputKindForExtension() here
+    // and changing the default case to IK_None.
+    InputKind ik = llvm::StringSwitch<InputKind>(StringRef(PathName).rsplit('.').second)
+      .Cases("ast", "pcm", IK_AST)
+      .Case("c", IK_C)
+      .Cases("S", "s", IK_Asm)
+      .Case("i", IK_PreprocessedC)
+      .Case("ii", IK_PreprocessedCXX)
+      .Case("cui", IK_PreprocessedCuda)
+      .Case("m", IK_ObjC)
+      .Case("mi", IK_PreprocessedObjC)
+      .Cases("mm", "M", IK_ObjCXX)
+      .Case("mii", IK_PreprocessedObjCXX)
+      .Cases("C", "cc", "cp", IK_CXX)
+      .Cases("cpp", "CPP", "c++", "cxx", "hpp", IK_CXX)
+      .Case("cl", IK_OpenCL)
+      .Case("cu", IK_CUDA)
+      .Cases("ll", "bc", IK_LLVM_IR)
+      .Default(IK_None);
+
+    if(ik != IK_None) {
+      FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
+    }
+  };
+
   if(II == Ident_package) {
     Lex(Tok); // eat the 'package'
 
@@ -1996,6 +2025,34 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
     Lex(Tok); // eat the package name
     while(Tok.getKind() != tok::eod) {
       HandleUsingPackageEntry(Tok, entry);
+    }
+
+    if(FrontendOpts)
+    {
+      std::error_code EC;
+      for(llvm::sys::fs::recursive_directory_iterator DirIt(entry.Name, EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
+        if(llvm::sys::fs::is_directory(DirIt->path()))
+          continue;
+
+        pfnAddFile(DirIt->path());
+      }
+
+      if(llvm::sys::fs::is_directory(entry.Name + "/include")) {
+        const DirectoryLookup *CurDir = nullptr;
+        const FileEntry *File = LookupFile(
+          Tok.getLocation(), entry.Name + "/include/Package.h",
+          false, nullptr, nullptr, CurDir,
+          nullptr, nullptr, nullptr);
+        SourceLocation IncludePos = Tok.getLocation();
+
+        SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
+
+        FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
+        assert(FID.isValid() && "Expected valid file ID");
+
+        if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
+          return;
+      }
     }
 
     llvm::outs() << "Found a #using package directive for package '" << entry.Name << "'";
@@ -2053,34 +2110,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
     if(FrontendOpts)
     {
-      auto pfnAddFile = [this](const std::string& PathName) {
-        // I want to use FrontEndOptions::getInputKindForExtension(), but there are two problems:
-        // 1.) The default case for that is IK_C, which doesn't have the behavior that I want.
-        // 2.) Unit tests have link issues due to undefined symbols, which I do not care to fix.
-        // Therefore, I'm copying the text of FrontEndOptions::getInputKindForExtension() here
-        // and changing the default case to IK_None.
-        InputKind ik = llvm::StringSwitch<InputKind>(StringRef(PathName).rsplit('.').second)
-          .Cases("ast", "pcm", IK_AST)
-          .Case("c", IK_C)
-          .Cases("S", "s", IK_Asm)
-          .Case("i", IK_PreprocessedC)
-          .Case("ii", IK_PreprocessedCXX)
-          .Case("cui", IK_PreprocessedCuda)
-          .Case("m", IK_ObjC)
-          .Case("mi", IK_PreprocessedObjC)
-          .Cases("mm", "M", IK_ObjCXX)
-          .Case("mii", IK_PreprocessedObjCXX)
-          .Cases("C", "cc", "cp", IK_CXX)
-          .Cases("cpp", "CPP", "c++", "cxx", "hpp", IK_CXX)
-          .Case("cl", IK_OpenCL)
-          .Case("cu", IK_CUDA)
-          .Cases("ll", "bc", IK_LLVM_IR)
-          .Default(IK_None);
-
-        if(ik != IK_None) {
-          FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
-        }
-      };
       if(llvm::sys::fs::is_directory(pathName)) {
         std::error_code EC;
         if(recursive) {
