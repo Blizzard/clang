@@ -16,6 +16,7 @@
 #include "llvm/ADT/StringRef.h"
 #include <string>
 #include <vector>
+#include <map>
 
 namespace llvm {
 class MemoryBuffer;
@@ -211,6 +212,9 @@ public:
 
   /// Extra inputs discovered during processing
   std::vector<FrontendInputFile> ExtraInputs;
+
+  // Package options
+  std::map<std::string, std::string> PackageOptions;
 
   /// The output file, if any.
   std::string OutputFile;

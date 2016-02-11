@@ -2033,14 +2033,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
     if(FrontendOpts)
     {
-      std::error_code EC;
-      for(llvm::sys::fs::recursive_directory_iterator DirIt(entry.Name, EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
-        if(llvm::sys::fs::is_directory(DirIt->path()))
-          continue;
-
-        pfnAddFile(DirIt->path());
-      }
-
       std::vector<std::string> DefaultIncludeFiles;
       std::string ManifestFileName = entry.Name + "/MANIFEST";
       if(llvm::sys::fs::is_regular_file(ManifestFileName)) {
@@ -2110,24 +2102,53 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
       skip_manifest:
 
-      if(llvm::sys::fs::is_directory(entry.Name + "/include")) {
-        std::vector<std::string>* IncludeFilesToUse = entry.Includes ? entry.Includes.get() : &DefaultIncludeFiles;
-        for(auto& IncludeFile : *IncludeFilesToUse)
-        {
-          const DirectoryLookup *CurDir = nullptr;
-          const FileEntry *File = LookupFile(
-            Tok.getLocation(), entry.Name + "/include/" + IncludeFile,
-            false, nullptr, nullptr, CurDir,
-            nullptr, nullptr, nullptr);
-          SourceLocation IncludePos = Tok.getLocation();
+      std::deque<std::string> PackagePaths{ entry.Name };
+      while(!PackagePaths.empty()) {
+        std::string PackageEntryPath = PackagePaths.front();
+        PackagePaths.pop_front();
 
-          SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
+        if(llvm::sys::fs::is_directory(PackageEntryPath + "/include")) {
+          std::vector<std::string>* IncludeFilesToUse = entry.Includes ? entry.Includes.get() : &DefaultIncludeFiles;
+          for(auto& IncludeFile : *IncludeFilesToUse)
+          {
+            const DirectoryLookup *CurDir = nullptr;
+            const FileEntry *File = LookupFile(
+              Tok.getLocation(), PackageEntryPath + "/include/" + IncludeFile,
+              false, nullptr, nullptr, CurDir,
+              nullptr, nullptr, nullptr);
+            SourceLocation IncludePos = Tok.getLocation();
 
-          FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
-          assert(FID.isValid() && "Expected valid file ID");
+            SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
 
-          if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
-            return;
+            FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
+            assert(FID.isValid() && "Expected valid file ID");
+
+            if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
+              return;
+          }
+        }
+
+        if(llvm::sys::fs::is_directory(PackageEntryPath + "/source")) {
+          std::error_code EC;
+          for(llvm::sys::fs::recursive_directory_iterator DirIt(PackageEntryPath + "/source", EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
+            if(llvm::sys::fs::is_directory(DirIt->path()))
+              continue;
+
+            pfnAddFile(DirIt->path());
+          }
+        }
+
+        std::error_code EC;
+        for(llvm::sys::fs::directory_iterator DirIt(PackageEntryPath, EC), DirEnd; DirIt != DirEnd && !EC; DirIt.increment(EC)) {
+          if(!llvm::sys::fs::is_directory(DirIt->path()))
+            continue;
+
+          std::string PathName = llvm::sys::path::filename(DirIt->path());
+          for(auto& PackageOption : FrontendOpts->PackageOptions) {
+            if((PackageOption.first + "=" + PackageOption.second) == PathName) {
+              PackagePaths.push_back(DirIt->path());
+            }
+          }
         }
       }
     }
@@ -2245,6 +2266,10 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
     std::string Value = getSpelling(Tok);
     Value = Value.substr(1, Value.size() - 2);
     Lex(Tok); // eat the Value
+
+    if(FrontendOpts) {
+      FrontendOpts->PackageOptions[Key->getName()] = Value;
+    }
 
     llvm::outs() << "Found a #using option directive Key = '" << Key->getName().str() << "' Value = '" << Value << "'\n";
   }
