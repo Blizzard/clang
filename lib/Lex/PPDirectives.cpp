@@ -29,6 +29,7 @@
 #include "llvm/Support/SaveAndRestore.h"
 #include "clang/Frontend/FrontendOptions.h"
 #include "llvm/ADT/StringSwitch.h"
+#include "llvm/Support/YAMLParser.h"
 using namespace clang;
 
 //===----------------------------------------------------------------------===//
@@ -1880,12 +1881,13 @@ void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
       Lex(Tok); // eat the '('
 
       bool done = false;
+      entry.Includes.reset(new std::vector<std::string>);
       while(!done) {
         switch(Tok.getKind()) {
         case tok::string_literal:
         {
           std::string filename = getSpelling(Tok);
-          entry.Includes.push_back(filename.substr(1, filename.size() - 2));
+          entry.Includes->push_back(filename.substr(1, filename.size() - 2));
           Lex(Tok); // eat the include file name
 
           if(Tok.getKind() != tok::comma && Tok.getKind() != tok::r_paren) {
@@ -1914,11 +1916,12 @@ void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
     {
       Lex(Tok); // eat the '['
 
+      entry.Modules.reset(new std::vector<IdentifierInfo*>);
       bool done = false;
       while(!done) {
         switch(Tok.getKind()) {
         case tok::identifier:
-          entry.Modules.push_back(Tok.getIdentifierInfo());
+          entry.Modules->push_back(Tok.getIdentifierInfo());
           Lex(Tok); // eat the module name
 
           if(Tok.getKind() != tok::comma && Tok.getKind() != tok::r_square) {
@@ -1954,8 +1957,9 @@ void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
           return;
         }
 
-        entry.Version = getSpelling(Tok);
-        entry.Version = entry.Version.substr(1, entry.Version.size() - 2);
+        entry.Version.reset(new std::string);
+        *entry.Version = getSpelling(Tok);
+        *entry.Version = entry.Version->substr(1, entry.Version->size() - 2);
         Lex(Tok); // eat the version number
       }
       else
@@ -2037,38 +2041,111 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         pfnAddFile(DirIt->path());
       }
 
+      std::vector<std::string> DefaultIncludeFiles;
+      std::string ManifestFileName = entry.Name + "/MANIFEST";
+      if(llvm::sys::fs::is_regular_file(ManifestFileName)) {
+        auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName);
+        if(ManifestFileBuffer) {
+          llvm::SourceMgr SM;
+          llvm::yaml::Stream ManifestStream(ManifestFileBuffer.get()->getBuffer(), SM);
+
+          llvm::yaml::document_iterator DI = ManifestStream.begin();
+          llvm::yaml::Node *Root = DI->getRoot();
+          if(DI == ManifestStream.end() || !Root) {
+            // Manifest file parsing error...
+            goto skip_manifest;
+          }
+
+          llvm::yaml::MappingNode *Top = dyn_cast<llvm::yaml::MappingNode>(Root);
+          if(!Top) {
+            goto skip_manifest;
+          }
+
+          auto parseScalarString = [](llvm::yaml::Node *N, StringRef &Result, SmallVectorImpl<char> &Storage)
+          {
+            llvm::yaml::ScalarNode *S = dyn_cast<llvm::yaml::ScalarNode>(N);
+            if(!S) {
+              return false;
+            }
+            Result = S->getValue(Storage);
+            return true;
+          };
+
+          for(llvm::yaml::MappingNode::iterator I = Top->begin(), E = Top->end(); I != E; ++I) {
+            SmallString<10> KeyBuffer;
+            StringRef Key;
+
+            if(!parseScalarString(I->getKey(), Key, KeyBuffer)) {
+              break;
+            }
+
+            if(Key == "INCLUDE") {
+              llvm::yaml::SequenceNode *Roots = dyn_cast<llvm::yaml::SequenceNode>(I->getValue());
+              if(!Roots) {
+                break;
+              }
+
+              bool ReadIncludesSuccess = true;
+              for(llvm::yaml::SequenceNode::iterator I = Roots->begin(), E = Roots->end(); I != E; ++I) {
+                SmallString<128> IncludeBuffer;
+                StringRef IncludeFile;
+                if(!parseScalarString(I, IncludeFile, IncludeBuffer)) {
+                  ReadIncludesSuccess = false;
+                  break;
+                }
+
+                DefaultIncludeFiles.push_back(IncludeFile);
+              }
+
+              if(!ReadIncludesSuccess) {
+                break;
+              }
+            }
+            else {
+              llvm_unreachable("key missing from Keys");
+            }
+          }
+        }
+      }
+
+      skip_manifest:
+
       if(llvm::sys::fs::is_directory(entry.Name + "/include")) {
-        const DirectoryLookup *CurDir = nullptr;
-        const FileEntry *File = LookupFile(
-          Tok.getLocation(), entry.Name + "/include/Package.h",
-          false, nullptr, nullptr, CurDir,
-          nullptr, nullptr, nullptr);
-        SourceLocation IncludePos = Tok.getLocation();
+        std::vector<std::string>* IncludeFilesToUse = entry.Includes ? entry.Includes.get() : &DefaultIncludeFiles;
+        for(auto& IncludeFile : *IncludeFilesToUse)
+        {
+          const DirectoryLookup *CurDir = nullptr;
+          const FileEntry *File = LookupFile(
+            Tok.getLocation(), entry.Name + "/include/" + IncludeFile,
+            false, nullptr, nullptr, CurDir,
+            nullptr, nullptr, nullptr);
+          SourceLocation IncludePos = Tok.getLocation();
 
-        SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
+          SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
 
-        FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
-        assert(FID.isValid() && "Expected valid file ID");
+          FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
+          assert(FID.isValid() && "Expected valid file ID");
 
-        if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
-          return;
+          if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
+            return;
+        }
       }
     }
 
     llvm::outs() << "Found a #using package directive for package '" << entry.Name << "'";
-    if(!entry.Version.empty())
-      llvm::outs() << " version '" << entry.Version << "'";
-    if(!entry.Includes.empty())
+    if(entry.Version && !entry.Version->empty())
+      llvm::outs() << " version '" << *entry.Version << "'";
+    if(entry.Includes && !entry.Includes->empty())
     {
       llvm::outs() << "\nInclude files:\n";
-      for(const auto& include : entry.Includes) {
+      for(const auto& include : *entry.Includes) {
         llvm::outs() << include << "\n";
       }
     }
-    if(!entry.Modules.empty())
+    if(entry.Modules && !entry.Modules->empty())
     {
       llvm::outs() << "\nModules:\n";
-      for(const auto& module : entry.Modules) {
+      for(const auto& module : *entry.Modules) {
         llvm::outs() << module->getName().str() << "\n";
       }
     }

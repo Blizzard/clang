@@ -1861,9 +1861,9 @@ private:
   struct PackageEntry
   {
     std::string Name;
-    std::string Version;
-    std::vector<std::string> Includes;
-    std::vector<IdentifierInfo*> Modules;
+    std::unique_ptr<std::string> Version;
+    std::unique_ptr<std::vector<std::string>> Includes;
+    std::unique_ptr<std::vector<IdentifierInfo*>> Modules;
   };
   void HandleUsingPackageEntry(Token &Tok, PackageEntry& entry);
   void HandleUsingDirective(Token &Tok);
