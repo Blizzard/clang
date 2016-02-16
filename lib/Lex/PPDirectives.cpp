@@ -2033,8 +2033,34 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
     if(FrontendOpts)
     {
+      auto IsValidPackage = [](const std::string& PackagePath) {
+        if(llvm::sys::fs::is_directory(PackagePath)) {
+          return true;
+        }
+        else if(llvm::sys::fs::is_regular_file(PackagePath) ||
+          llvm::sys::fs::is_regular_file(PackagePath + ".zip")) {
+          // Check to see if it's a zip file.
+
+          // We don't support zip files yet, so fail for now :(
+          return false;
+        }
+        return false;
+      };
+
+      bool FoundPackage = false;
+      std::string PackagePath = "./" + entry.Name;
+      if(!IsValidPackage(PackagePath)) {
+        for(auto& Package : FrontendOpts->PackageSearchPaths) {
+          PackagePath = Package + "/" + entry.Name;
+          if(IsValidPackage(Package)) {
+            FoundPackage = true;
+            break;
+          }
+        }
+      }
+
       std::vector<std::string> DefaultIncludeFiles;
-      std::string ManifestFileName = entry.Name + "/MANIFEST";
+      std::string ManifestFileName = PackagePath + "/MANIFEST";
       if(llvm::sys::fs::is_regular_file(ManifestFileName)) {
         auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName);
         if(ManifestFileBuffer) {
@@ -2102,7 +2128,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
       skip_manifest:
 
-      std::deque<std::string> PackagePaths{ entry.Name };
+      std::deque<std::string> PackagePaths{ PackagePath };
       while(!PackagePaths.empty()) {
         std::string PackageEntryPath = PackagePaths.front();
         PackagePaths.pop_front();

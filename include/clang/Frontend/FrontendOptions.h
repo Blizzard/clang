@@ -216,6 +216,9 @@ public:
   // Package options
   std::map<std::string, std::string> PackageOptions;
 
+  // Package search paths
+  std::vector<std::string> PackageSearchPaths;
+
   /// The output file, if any.
   std::string OutputFile;
 

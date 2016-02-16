@@ -5542,6 +5542,13 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back("-linker_file_list");
   CmdArgs.push_back(Args.MakeArgString(C.getLinkerFileList()));
 
+  for(auto Arg : Args.filtered(options::OPT_package_search_path)) {
+    Arg->claim();
+    CmdArgs.push_back(Args.MakeArgString(Arg->getSpelling().str().c_str()));
+    CmdArgs.push_back(Arg->getValue());
+  }
+
+
   // Finally add the compile command to the compilation.
   if (Args.hasArg(options::OPT__SLASH_fallback) &&
       Output.getType() == types::TY_Object &&
