@@ -1798,7 +1798,7 @@ def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option
 
 def linker_file_list : Separate<["-"], "linker_file_list">, Flags<[CC1Option]>,
   HelpText<"The file used by the linker">;
-def package_search_path : Separate<["-"], "package_search_path">, Flags<[DriverOption,CC1Option]>,
+def package_search_path : Separate<["-"], "package_search_path">, Flags<[DriverOption,CC1Option,CoreOption]>,
   HelpText<"Directory to search for packages">;
 
 // Double dash options, which are usually an alias for one of the previous
