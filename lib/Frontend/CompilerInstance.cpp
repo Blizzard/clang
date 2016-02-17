@@ -846,6 +846,33 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
     LinkerFileListStream.reset(new llvm::raw_fd_ostream(WriteFD, true));
   }
 
+  auto GetLanguageFamily = [](InputKind K) {
+    switch(K)
+    {
+    case clang::IK_None:
+    case clang::IK_AST:
+    case clang::IK_LLVM_IR:
+    case clang::IK_Asm:
+    case clang::IK_ObjC:
+    case clang::IK_ObjCXX:
+    case clang::IK_PreprocessedObjC:
+    case clang::IK_PreprocessedObjCXX:
+    default:
+      return LangFamily::langfamily_None;
+    case clang::IK_C:
+    case clang::IK_PreprocessedC:
+      return LangFamily::langfamily_C;
+    case clang::IK_CXX:
+    case clang::IK_PreprocessedCXX:
+      return LangFamily::langfamily_Cxx;
+    case clang::IK_OpenCL:
+      return LangFamily::langfamily_OpenCL;
+    case clang::IK_CUDA:
+    case clang::IK_PreprocessedCuda:
+      return LangFamily::langfamily_CUDA;
+    }
+  };
+
   do 
   {
     getFrontendOpts().Inputs.insert(getFrontendOpts().Inputs.end(), getFrontendOpts().ExtraInputs.begin(), getFrontendOpts().ExtraInputs.end());
@@ -867,8 +894,30 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
         }
       }
 
+      CompilerInvocation::setLangDefaults(getLangOpts(), FIF.getKind(), LangStandard::getLatestLangStandardKindForFamily(GetLanguageFamily(FIF.getKind())));
+
       if (Act.BeginSourceFile(*this, FIF)) {
+
+        std::vector<DirectoryLookup> ExistingDirs;
+        unsigned angleDirIdx, systemDirIdx;
+        bool noCurDirSearch;
+        if(PP) {
+          PP->getHeaderSearchInfo().GetSearchPaths(ExistingDirs, angleDirIdx, systemDirIdx, noCurDirSearch);
+
+          for(const auto& IncludePath : FIF.getExtraHeaders()) {
+            if(const DirectoryEntry *DE = PP->getHeaderSearchInfo().getFileMgr().getDirectory(IncludePath)) {
+              DirectoryLookup DL(DE, SrcMgr::C_User, false);
+              PP->getHeaderSearchInfo().AddSearchPath(DL, false);
+            }
+          }
+        }
+
         Act.Execute();
+
+        if(PP) {
+          PP->getHeaderSearchInfo().SetSearchPaths(ExistingDirs, angleDirIdx, systemDirIdx, noCurDirSearch);
+        }
+
         Act.EndSourceFile();
       }
     }

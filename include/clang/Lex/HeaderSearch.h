@@ -274,6 +274,15 @@ public:
     //LookupFileCache.clear();
   }
 
+  void GetSearchPaths(std::vector<DirectoryLookup>& dirs,
+    unsigned& angledDirIdx, unsigned& systemDirIdx,
+    bool& noCurDirSearch) {
+    dirs = SearchDirs;
+    angledDirIdx = AngledDirIdx;
+    systemDirIdx = SystemDirIdx;
+    noCurDirSearch = NoCurDirSearch;
+  }
+
   /// \brief Add an additional search path.
   void AddSearchPath(const DirectoryLookup &dir, bool isAngled) {
     unsigned idx = isAngled ? SystemDirIdx : AngledDirIdx;

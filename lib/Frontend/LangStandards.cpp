@@ -17,6 +17,18 @@ using namespace clang::frontend;
   static const LangStandard Lang_##id = { name, desc, features };
 #include "clang/Frontend/LangStandards.def"
 
+static const LangStandard::Kind LatestLangStandardForFamily[LangFamily::langfamily_Count] = {
+  LangStandard::lang_unspecified,
+#define LANGSTANDARD(id, name, desc, features)
+#define LANGFAMILY(id, latest_id) \
+  LangStandard::lang_##latest_id,
+#include "clang/Frontend/LangStandards.def"
+};
+
+LangStandard::Kind LangStandard::getLatestLangStandardKindForFamily(LangFamily::Kind K) {
+  return LatestLangStandardForFamily[K];
+}
+
 const LangStandard &LangStandard::getLangStandardForKind(Kind K) {
   switch (K) {
   case lang_unspecified:

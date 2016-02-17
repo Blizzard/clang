@@ -19,7 +19,18 @@
 /// \param FEATURES - The standard features as flags, these are enums from the
 /// clang::frontend namespace, which is assumed to be be available.
 
+#ifndef LANGFAMILY
+#define LANGFAMILY(IDENT, LATEST)
+#endif
+
+/// LANGFAMILY(IDENT, LATEST)
+///
+/// \param IDENT - The name of the language family as a C++ identifier.
+/// \param LATEST - The identifier of the latest version of this language family.
+
 // C89-ish modes.
+LANGFAMILY(C, c11)
+
 LANGSTANDARD(c89, "c89",
              "ISO C 1990",
              C89 | ImplicitInt)
@@ -83,7 +94,10 @@ LANGSTANDARD(gnu1x, "gnu1x",
              "ISO C 2011 with GNU extensions",
              LineComment | C99 | C11 | Digraphs | GNUMode | HexFloat)
 
+
 // C++ modes
+LANGFAMILY(Cxx, cxx14)
+
 LANGSTANDARD(cxx98, "c++98",
              "ISO C++ 1998 with amendments",
              LineComment | CPlusPlus | Digraphs)
@@ -131,7 +145,10 @@ LANGSTANDARD(gnucxx1z, "gnu++1z",
              LineComment | CPlusPlus | CPlusPlus11 | CPlusPlus14 | CPlusPlus1z |
              Digraphs | GNUMode)
 
+
 // OpenCL
+LANGFAMILY(OpenCL, opencl20)
+
 LANGSTANDARD(opencl, "cl",
              "OpenCL 1.0",
              LineComment | C99 | Digraphs | HexFloat)
@@ -145,9 +162,13 @@ LANGSTANDARD(opencl20, "CL2.0",
              "OpenCL 2.0",
              LineComment | C99 | Digraphs | HexFloat)
 
+
 // CUDA
+LANGFAMILY(CUDA, cuda)
+
 LANGSTANDARD(cuda, "cuda",
              "NVIDIA CUDA(tm)",
              LineComment | CPlusPlus | Digraphs)
 
 #undef LANGSTANDARD
+#undef LANGFAMILY

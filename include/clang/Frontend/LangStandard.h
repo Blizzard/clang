@@ -34,6 +34,19 @@ enum LangFeatures {
 
 }
 
+struct LangFamily {
+  enum Kind {
+    langfamily_None,
+#define LANGSTANDARD(id, name, desc, features)
+#define LANGFAMILY(id, latest_id) \
+  langfamily_##id,
+#include "clang/Frontend/LangStandards.def"
+#undef LANGFAMILY
+#undef LANGSTANDARD
+    langfamily_Count,
+  };
+};
+
 /// LangStandard - Information about the properties of a particular language
 /// standard.
 struct LangStandard {
@@ -91,6 +104,7 @@ public:
   /// hasImplicitInt - Language allows variables to be typed as int implicitly.
   bool hasImplicitInt() const { return Flags & frontend::ImplicitInt; }
 
+  static Kind getLatestLangStandardKindForFamily(LangFamily::Kind K);
   static const LangStandard &getLangStandardForKind(Kind K);
   static const LangStandard *getLangStandardForName(StringRef Name);
 };

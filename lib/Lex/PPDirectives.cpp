@@ -1985,7 +1985,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
   
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
-  auto pfnAddFile = [this](const std::string& PathName) {
+  auto pfnAddFile = [this](const std::string& PathName, const std::vector<std::string>& IncludePaths = {}) {
     // I want to use FrontEndOptions::getInputKindForExtension(), but there are two problems:
     // 1.) The default case for that is IK_C, which doesn't have the behavior that I want.
     // 2.) Unit tests have link issues due to undefined symbols, which I do not care to fix.
@@ -2010,7 +2010,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       .Default(IK_None);
 
     if(ik != IK_None) {
-      FrontendOpts->ExtraInputs.push_back(FrontendInputFile{ PathName, ik });
+      FrontendOpts->ExtraInputs.push_back({ FrontendInputFile{ PathName, ik, false, IncludePaths } });
     }
   };
 
@@ -2129,30 +2129,17 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
       skip_manifest:
 
+      std::vector<std::string> ExtraIncludePaths;
+      std::vector<std::string> ExtraSources;
+
       std::deque<std::string> PackagePaths{ PackagePath };
       while(!PackagePaths.empty()) {
         std::string PackageEntryPath = PackagePaths.front();
         PackagePaths.pop_front();
 
-        if(llvm::sys::fs::is_directory(PackageEntryPath + "/include")) {
-          std::vector<std::string>* IncludeFilesToUse = entry.Includes ? entry.Includes.get() : &DefaultIncludeFiles;
-          for(auto& IncludeFile : *IncludeFilesToUse)
-          {
-            const DirectoryLookup *CurDir = nullptr;
-            const FileEntry *File = LookupFile(
-              Tok.getLocation(), PackageEntryPath + "/include/" + IncludeFile,
-              false, nullptr, nullptr, CurDir,
-              nullptr, nullptr, nullptr);
-            SourceLocation IncludePos = Tok.getLocation();
-
-            SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
-
-            FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
-            assert(FID.isValid() && "Expected valid file ID");
-
-            if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
-              return;
-          }
+        std::string IncludeDirectory = PackageEntryPath + "/include";
+        if(llvm::sys::fs::is_directory(IncludeDirectory)) {
+          ExtraIncludePaths.push_back(IncludeDirectory);
         }
 
         if(llvm::sys::fs::is_directory(PackageEntryPath + "/source")) {
@@ -2161,7 +2148,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
             if(llvm::sys::fs::is_directory(DirIt->path()))
               continue;
 
-            pfnAddFile(DirIt->path());
+            ExtraSources.push_back(DirIt->path());
           }
         }
 
@@ -2177,6 +2164,42 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
             }
           }
         }
+      }
+
+      std::vector<std::string> IncludeFilesToUse = entry.Includes ? *entry.Includes : DefaultIncludeFiles;
+      for(auto& IncludeFile : IncludeFilesToUse)
+      {
+        const DirectoryLookup *CurDir = nullptr;
+        const FileEntry *File = nullptr;
+        for(const auto& IncludePath : ExtraIncludePaths)
+        {
+          File = LookupFile(
+            Tok.getLocation(), IncludePath + "/" + IncludeFile,
+            false, nullptr, nullptr, CurDir,
+            nullptr, nullptr, nullptr);
+
+          if(File)
+            break;
+        }
+
+        if(!File) {
+          Diag(Tok, diag::err_pp_file_not_found) << IncludeFile;
+        }
+
+        SourceLocation IncludePos = Tok.getLocation();
+
+        SrcMgr::CharacteristicKind FileCharacter = SrcMgr::C_User;
+
+        FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
+        assert(FID.isValid() && "Expected valid file ID");
+
+        if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
+          return;
+      }
+
+      for(auto& SourceFile : ExtraSources)
+      {
+        pfnAddFile(SourceFile, ExtraIncludePaths);
       }
     }
 

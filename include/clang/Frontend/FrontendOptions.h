@@ -92,13 +92,17 @@ class FrontendInputFile {
   /// \brief Whether we're dealing with a 'system' input (vs. a 'user' input).
   bool IsSystem;
 
+  /// \brief Extra header search directories to use for this particular input file
+  std::vector<std::string> ExtraHeaders;
+
 public:
   FrontendInputFile() : Buffer(nullptr), Kind(IK_None), IsSystem(false) { }
-  FrontendInputFile(StringRef File, InputKind Kind, bool IsSystem = false)
-    : File(File.str()), Buffer(nullptr), Kind(Kind), IsSystem(IsSystem) { }
+  FrontendInputFile(StringRef File, InputKind Kind, bool IsSystem = false,
+                    const std::vector<std::string>& ExtraHeaders = {})
+    : File(File.str()), Buffer(nullptr), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders){ }
   FrontendInputFile(llvm::MemoryBuffer *buffer, InputKind Kind,
-                    bool IsSystem = false)
-    : Buffer(buffer), Kind(Kind), IsSystem(IsSystem) { }
+                    bool IsSystem = false, const std::vector<std::string>& ExtraHeaders = {})
+    : Buffer(buffer), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders) { }
 
   InputKind getKind() const { return Kind; }
   bool isSystem() const { return IsSystem; }
@@ -114,6 +118,10 @@ public:
   llvm::MemoryBuffer *getBuffer() const {
     assert(isBuffer());
     return Buffer;
+  }
+
+  const std::vector<std::string>& getExtraHeaders() const {
+    return ExtraHeaders;
   }
 };
 
