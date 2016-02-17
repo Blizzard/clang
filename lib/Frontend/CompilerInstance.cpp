@@ -894,6 +894,15 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
         }
       }
 
+
+      // TODO:
+      // * If the user has specified a language standard for their file, we should respect it for their files.
+      // * If this is a file from a #using path directive, we should use the requested language standard, if the language family matches the input file(s).
+      // * If this is a file from a #using path directive and the language family is different, then use the package rules to determine the language standard.
+      // * If this is a file from a package, we should:
+      //   - Try to compile it with the latest version of the language specification.
+      //   - If it fails, then try again with a one-notch lower language standard, until you find a standard that works.
+      // For now, we are simply using the latest standard for whatever the language family for this file is for all files.
       CompilerInvocation::setLangDefaults(getLangOpts(), FIF.getKind(), LangStandard::getLatestLangStandardKindForFamily(GetLanguageFamily(FIF.getKind())));
 
       if (Act.BeginSourceFile(*this, FIF)) {
@@ -912,11 +921,34 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
           }
         }
 
+        bool PreviousIgnoreWarnings = getDiagnosticOpts().IgnoreWarnings;
+        if(FIF.ignoreWarnings()) {
+          getDiagnosticOpts().IgnoreWarnings = true;
+          getDiagnostics().setIgnoreAllWarnings(true);
+        }
+
+        unsigned int PreviousOptimizationLevel = getCodeGenOpts().OptimizationLevel;
+        unsigned int PreviousOptimizeSize = getCodeGenOpts().OptimizeSize;
+        auto PreviousInlining = getCodeGenOpts().getInlining();
+        bool PreviousUrollLoops = getCodeGenOpts().UnrollLoops;
+        if(FIF.forceCompileOptimized()) {
+          getCodeGenOpts().OptimizeSize = 0;
+          getCodeGenOpts().OptimizationLevel = 3;
+          getCodeGenOpts().setInlining(CodeGenOptions::NormalInlining);
+          getCodeGenOpts().UnrollLoops = true;
+        }
+
         Act.Execute();
 
         if(PP) {
           PP->getHeaderSearchInfo().SetSearchPaths(ExistingDirs, angleDirIdx, systemDirIdx, noCurDirSearch);
         }
+        getDiagnosticOpts().IgnoreWarnings = PreviousIgnoreWarnings;
+        getDiagnostics().setIgnoreAllWarnings(PreviousIgnoreWarnings);
+        getCodeGenOpts().OptimizeSize = PreviousOptimizeSize;
+        getCodeGenOpts().OptimizationLevel = PreviousOptimizationLevel;
+        getCodeGenOpts().setInlining(PreviousInlining);
+        getCodeGenOpts().UnrollLoops = PreviousUrollLoops;
 
         Act.EndSourceFile();
       }

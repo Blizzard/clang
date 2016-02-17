@@ -92,20 +92,31 @@ class FrontendInputFile {
   /// \brief Whether we're dealing with a 'system' input (vs. a 'user' input).
   bool IsSystem;
 
-  /// \brief Extra header search directories to use for this particular input file
+  /// \brief Extra header search directories to use for this particular input file.
   std::vector<std::string> ExtraHeaders;
+
+  /// \brief Ignore warnings while compiling this file.
+  bool IgnoreWarnings;
+
+  /// \brief Force this file to compile with optimizations turned on.
+  bool ForceCompileOptimized;
 
 public:
   FrontendInputFile() : Buffer(nullptr), Kind(IK_None), IsSystem(false) { }
   FrontendInputFile(StringRef File, InputKind Kind, bool IsSystem = false,
-                    const std::vector<std::string>& ExtraHeaders = {})
-    : File(File.str()), Buffer(nullptr), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders){ }
+                    const std::vector<std::string>& ExtraHeaders = {},
+                    bool IgnoreWarnings = false,
+                    bool ForceCompileOptimized = false)
+    : File(File.str()), Buffer(nullptr), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders),
+      IgnoreWarnings(IgnoreWarnings), ForceCompileOptimized(ForceCompileOptimized) { }
   FrontendInputFile(llvm::MemoryBuffer *buffer, InputKind Kind,
                     bool IsSystem = false, const std::vector<std::string>& ExtraHeaders = {})
     : Buffer(buffer), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders) { }
 
   InputKind getKind() const { return Kind; }
   bool isSystem() const { return IsSystem; }
+  bool ignoreWarnings() const { return IgnoreWarnings; }
+  bool forceCompileOptimized() const { return ForceCompileOptimized; }
 
   bool isEmpty() const { return File.empty() && Buffer == nullptr; }
   bool isFile() const { return !isBuffer(); }
