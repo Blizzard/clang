@@ -2119,6 +2119,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
                 break;
               }
             }
+            else if(Key == "VERSION") { /* Ignore for now... */ }
             else {
               llvm_unreachable("key missing from Keys");
             }
