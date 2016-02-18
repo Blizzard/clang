@@ -2,6 +2,8 @@
 
 set(LLVM_LINK_COMPONENTS support)
 
+include_directories(../minizip/include ../zlib/include)
+
 add_clang_library(clangLex
   HeaderMap.cpp
   HeaderSearch.cpp

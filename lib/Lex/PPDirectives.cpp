@@ -30,6 +30,9 @@
 #include "clang/Frontend/FrontendOptions.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/YAMLParser.h"
+
+#include "unzip.h"
+
 using namespace clang;
 
 //===----------------------------------------------------------------------===//

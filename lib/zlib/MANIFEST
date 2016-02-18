@@ -1,0 +1,4 @@
+{
+  "VERSION": "1.2.8r4",
+  "INCLUDE": [ "zlib.h" ]
+}
