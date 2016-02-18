@@ -30,4 +30,5 @@ add_clang_library(clangLex
 
   LINK_LIBS
   clangBasic
+  minizip
   )
