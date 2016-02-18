@@ -560,6 +560,12 @@ def warn_pp_date_time : Warning<
   "expansion of date or time macro is not reproducible">,
   ShowInSystemHeader, DefaultIgnore, InGroup<DiagGroup<"date-time">>;
 
+// Package parsing
+def err_package_file_format : Error<"Could not open package file '%0' as a zip file">;
+def err_package_file_read : Error<"Error reading package file '%0'">;
+def err_package_subfile_read : Error<"Error reading file '%0' from package '%1'">;
+def err_package_file_write_temp : Error<"Error writing expanded file '%0' from package '%1'">;
+
 // Module map parsing
 def err_mmap_unknown_token : Error<"skipping stray token">;
 def err_mmap_expected_module : Error<"expected module declaration">;

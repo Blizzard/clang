@@ -2037,30 +2037,140 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
     if(FrontendOpts)
     {
-      auto IsValidPackage = [](const std::string& PackagePath) {
+      enum class PackageType { NotAPackage, Directory, ZipFile };
+      auto GetPackageType = [](std::string& PackagePath) -> PackageType {
         if(llvm::sys::fs::is_directory(PackagePath)) {
-          return true;
+          return PackageType::Directory;
         }
-        else if(llvm::sys::fs::is_regular_file(PackagePath) ||
-          llvm::sys::fs::is_regular_file(PackagePath + ".zip")) {
-          // Check to see if it's a zip file.
-
-          // We don't support zip files yet, so fail for now :(
-          return false;
+        else if(llvm::sys::fs::is_regular_file(PackagePath)) {
+          return PackageType::ZipFile;
         }
-        return false;
+        else if(llvm::sys::fs::is_regular_file(PackagePath + ".zip")) {
+          PackagePath += ".zip";
+          return PackageType::ZipFile;
+        }
+        else if(llvm::sys::fs::is_regular_file(PackagePath + ".package")) {
+          PackagePath += ".package";
+          return PackageType::ZipFile;
+        }
+        return PackageType::NotAPackage;
       };
 
-      bool FoundPackage = false;
+      PackageType FoundPackageType = PackageType::NotAPackage;
       std::string PackagePath = "./" + entry.Name;
-      if(!IsValidPackage(PackagePath)) {
+      if((FoundPackageType = GetPackageType(PackagePath)) == PackageType::NotAPackage) {
         for(auto& Package : FrontendOpts->PackageSearchPaths) {
           PackagePath = Package + "/" + entry.Name;
-          if(IsValidPackage(Package)) {
-            FoundPackage = true;
+          if((FoundPackageType = GetPackageType(PackagePath)) != PackageType::NotAPackage) {
             break;
           }
         }
+      }
+
+      if(FoundPackageType == PackageType::ZipFile) {
+        // Create a temporary directory...
+        SmallString<260> PackageTempDirectory;
+        llvm::sys::fs::createUniqueDirectory(llvm::sys::path::filename(entry.Name), PackageTempDirectory);
+
+        // Unpack the zip file into the temporary directory...
+        unzFile f = unzOpen64(PackagePath.c_str());
+        if(!f) {
+          Diag(Tok, diag::err_package_file_format) << PackagePath;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+
+        unz_global_info64 tGlobalInfo;
+        if(unzGetGlobalInfo64(f, &tGlobalInfo) != UNZ_OK) {
+          Diag(Tok, diag::err_package_file_read) << PackagePath;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+
+        for(int i = 0; i < tGlobalInfo.number_entry; i++)
+        {
+          unz_file_info64 tFileInfo;
+          char pszFileName[512];
+
+          if(unzGetCurrentFileInfo64(f, &tFileInfo, pszFileName, 512, nullptr, 0, nullptr, 0) != UNZ_OK) {
+            Diag(Tok, diag::err_package_file_read) << PackagePath;
+            DiscardUntilEndOfDirective();
+            return;
+          }
+
+          std::string strFileName = pszFileName;
+          std::string strFullFilePath = PackageTempDirectory.str().str() + "/" + strFileName;
+          if(strFileName.back() == '/') {
+            // It's a directory...
+            llvm::sys::fs::create_directories(strFullFilePath);
+          }
+          else {
+            // It's a file...
+            if(unzOpenCurrentFile(f) != UNZ_OK) {
+              Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+              DiscardUntilEndOfDirective();
+              return;
+            }
+
+            std::error_code EC;
+            int FileFD = -1;
+            EC = llvm::sys::fs::openFileForWrite(strFullFilePath, FileFD, llvm::sys::fs::F_None);
+            if(EC) {
+              Diag(Tok, diag::err_cannot_open_file) << strFullFilePath << EC.message();
+              DiscardUntilEndOfDirective();
+              return;
+            }
+
+            llvm::raw_fd_ostream FileStream(FileFD, true);
+            std::vector<uint8_t> FileData(tFileInfo.uncompressed_size);
+
+            bool DoneReading = false;
+            while(!DoneReading) {
+              int BytesRead = unzReadCurrentFile(f, FileData.data(), FileData.size());
+              if(BytesRead > 0) {
+                FileStream.write(reinterpret_cast<char*>(FileData.data()), BytesRead);
+                if(FileStream.has_error()) {
+                  Diag(Tok, diag::err_package_file_write_temp) << strFullFilePath << PackagePath;
+                  DiscardUntilEndOfDirective();
+                  return;
+                }
+              }
+              else if(BytesRead == 0) {
+                DoneReading = true;
+              }
+              else {
+                Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+                DiscardUntilEndOfDirective();
+                return;
+              }
+            }
+
+            if(unzCloseCurrentFile(f) != UNZ_OK) {
+              Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+              DiscardUntilEndOfDirective();
+              return;
+            }
+          }
+
+          int GotoNextFileResult = unzGoToNextFile(f);
+          if(GotoNextFileResult == UNZ_END_OF_LIST_OF_FILE) {
+            break;
+          }
+          else if(GotoNextFileResult != UNZ_OK) {
+            Diag(Tok, diag::err_package_file_read) << PackagePath;
+            DiscardUntilEndOfDirective();
+            return;
+          }
+        }
+
+        if(unzClose(f) != UNZ_OK) {
+          Diag(Tok, diag::err_package_file_read) << PackagePath;
+          DiscardUntilEndOfDirective();
+          return;
+        }
+
+        // Set PackagePath to the temporary directory
+        PackagePath = PackageTempDirectory.str();
       }
 
       std::vector<std::string> DefaultIncludeFiles;
