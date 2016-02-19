@@ -2068,109 +2068,114 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       }
 
       if(FoundPackageType == PackageType::ZipFile) {
-        // Create a temporary directory...
-        SmallString<260> PackageTempDirectory;
-        llvm::sys::fs::createUniqueDirectory(llvm::sys::path::filename(entry.Name), PackageTempDirectory);
-
-        // Unpack the zip file into the temporary directory...
-        unzFile f = unzOpen64(PackagePath.c_str());
-        if(!f) {
-          Diag(Tok, diag::err_package_file_format) << PackagePath;
+        SmallString<260> PackageCacheDir;
+        if(!llvm::sys::path::user_cache_directory(PackageCacheDir, "clang", "packages", entry.Name)) {
+          Diag(Tok, diag::err_cannot_open_file) << entry.Name << "Cannot get user cache directory";
           DiscardUntilEndOfDirective();
           return;
         }
 
-        unz_global_info64 tGlobalInfo;
-        if(unzGetGlobalInfo64(f, &tGlobalInfo) != UNZ_OK) {
-          Diag(Tok, diag::err_package_file_read) << PackagePath;
-          DiscardUntilEndOfDirective();
-          return;
-        }
+        if(!llvm::sys::fs::is_directory(PackageCacheDir)) {
+          // Unpack the zip file into the temporary directory...
+          unzFile f = unzOpen64(PackagePath.c_str());
+          if(!f) {
+            Diag(Tok, diag::err_package_file_format) << PackagePath;
+            DiscardUntilEndOfDirective();
+            return;
+          }
 
-        for(int i = 0; i < tGlobalInfo.number_entry; i++)
-        {
-          unz_file_info64 tFileInfo;
-          char pszFileName[512];
-
-          if(unzGetCurrentFileInfo64(f, &tFileInfo, pszFileName, 512, nullptr, 0, nullptr, 0) != UNZ_OK) {
+          unz_global_info64 tGlobalInfo;
+          if(unzGetGlobalInfo64(f, &tGlobalInfo) != UNZ_OK) {
             Diag(Tok, diag::err_package_file_read) << PackagePath;
             DiscardUntilEndOfDirective();
             return;
           }
 
-          std::string strFileName = pszFileName;
-          std::string strFullFilePath = PackageTempDirectory.str().str() + "/" + strFileName;
-          if(strFileName.back() == '/') {
-            // It's a directory...
-            llvm::sys::fs::create_directories(strFullFilePath);
-          }
-          else {
-            // It's a file...
-            if(unzOpenCurrentFile(f) != UNZ_OK) {
-              Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+          for(int i = 0; i < tGlobalInfo.number_entry; i++)
+          {
+            unz_file_info64 tFileInfo;
+            char pszFileName[512];
+
+            if(unzGetCurrentFileInfo64(f, &tFileInfo, pszFileName, 512, nullptr, 0, nullptr, 0) != UNZ_OK) {
+              Diag(Tok, diag::err_package_file_read) << PackagePath;
               DiscardUntilEndOfDirective();
               return;
             }
 
-            std::error_code EC;
-            int FileFD = -1;
-            EC = llvm::sys::fs::openFileForWrite(strFullFilePath, FileFD, llvm::sys::fs::F_None);
-            if(EC) {
-              Diag(Tok, diag::err_cannot_open_file) << strFullFilePath << EC.message();
-              DiscardUntilEndOfDirective();
-              return;
+            std::string strFileName = pszFileName;
+            std::string strFullFilePath = PackageCacheDir.str().str() + "/" + strFileName;
+            if(strFileName.back() == '/') {
+              // It's a directory...
+              llvm::sys::fs::create_directories(strFullFilePath);
             }
+            else {
+              // It's a file...
+              if(unzOpenCurrentFile(f) != UNZ_OK) {
+                Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+                DiscardUntilEndOfDirective();
+                return;
+              }
 
-            llvm::raw_fd_ostream FileStream(FileFD, true);
-            std::vector<uint8_t> FileData(tFileInfo.uncompressed_size);
+              std::error_code EC;
+              int FileFD = -1;
+              EC = llvm::sys::fs::openFileForWrite(strFullFilePath, FileFD, llvm::sys::fs::F_None);
+              if(EC) {
+                Diag(Tok, diag::err_cannot_open_file) << strFullFilePath << EC.message();
+                DiscardUntilEndOfDirective();
+                return;
+              }
 
-            bool DoneReading = false;
-            while(!DoneReading) {
-              int BytesRead = unzReadCurrentFile(f, FileData.data(), FileData.size());
-              if(BytesRead > 0) {
-                FileStream.write(reinterpret_cast<char*>(FileData.data()), BytesRead);
-                if(FileStream.has_error()) {
-                  Diag(Tok, diag::err_package_file_write_temp) << strFullFilePath << PackagePath;
+              llvm::raw_fd_ostream FileStream(FileFD, true);
+              std::vector<uint8_t> FileData(tFileInfo.uncompressed_size);
+
+              bool DoneReading = false;
+              while(!DoneReading) {
+                int BytesRead = unzReadCurrentFile(f, FileData.data(), FileData.size());
+                if(BytesRead > 0) {
+                  FileStream.write(reinterpret_cast<char*>(FileData.data()), BytesRead);
+                  if(FileStream.has_error()) {
+                    Diag(Tok, diag::err_package_file_write_temp) << strFullFilePath << PackagePath;
+                    DiscardUntilEndOfDirective();
+                    return;
+                  }
+                }
+                else if(BytesRead == 0) {
+                  DoneReading = true;
+                }
+                else {
+                  Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
                   DiscardUntilEndOfDirective();
                   return;
                 }
               }
-              else if(BytesRead == 0) {
-                DoneReading = true;
-              }
-              else {
+
+              if(unzCloseCurrentFile(f) != UNZ_OK) {
                 Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
                 DiscardUntilEndOfDirective();
                 return;
               }
             }
 
-            if(unzCloseCurrentFile(f) != UNZ_OK) {
-              Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
+            int GotoNextFileResult = unzGoToNextFile(f);
+            if(GotoNextFileResult == UNZ_END_OF_LIST_OF_FILE) {
+              break;
+            }
+            else if(GotoNextFileResult != UNZ_OK) {
+              Diag(Tok, diag::err_package_file_read) << PackagePath;
               DiscardUntilEndOfDirective();
               return;
             }
           }
 
-          int GotoNextFileResult = unzGoToNextFile(f);
-          if(GotoNextFileResult == UNZ_END_OF_LIST_OF_FILE) {
-            break;
-          }
-          else if(GotoNextFileResult != UNZ_OK) {
+          if(unzClose(f) != UNZ_OK) {
             Diag(Tok, diag::err_package_file_read) << PackagePath;
             DiscardUntilEndOfDirective();
             return;
           }
         }
 
-        if(unzClose(f) != UNZ_OK) {
-          Diag(Tok, diag::err_package_file_read) << PackagePath;
-          DiscardUntilEndOfDirective();
-          return;
-        }
-
         // Set PackagePath to the temporary directory
-        PackagePath = PackageTempDirectory.str();
+        PackagePath = PackageCacheDir.str();
       }
 
       std::vector<std::string> DefaultIncludeFiles;
