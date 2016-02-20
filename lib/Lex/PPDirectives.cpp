@@ -1984,8 +1984,6 @@ void Preprocessor::HandleUsingPackageEntry(Token &Tok, PackageEntry& entry) {
 void Preprocessor::HandleUsingDirective(Token &Tok) {
   Lex(Tok); // eat the 'using'
 
-  //llvm::outs() << "Found a #using directive\n";
-  
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
   auto pfnAddFile = [this](const std::string& PathName, const std::vector<std::string>& IncludePaths = {}, bool IsFromPackage = false) {
@@ -2321,25 +2319,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         pfnAddFile(SourceFile, ExtraIncludePaths, true);
       }
     }
-
-    llvm::outs() << "Found a #using package directive for package '" << entry.Name << "'";
-    if(entry.Version && !entry.Version->empty())
-      llvm::outs() << " version '" << *entry.Version << "'";
-    if(entry.Includes && !entry.Includes->empty())
-    {
-      llvm::outs() << "\nInclude files:\n";
-      for(const auto& include : *entry.Includes) {
-        llvm::outs() << include << "\n";
-      }
-    }
-    if(entry.Modules && !entry.Modules->empty())
-    {
-      llvm::outs() << "\nModules:\n";
-      for(const auto& module : *entry.Modules) {
-        llvm::outs() << module->getName().str() << "\n";
-      }
-    }
-    llvm::outs() << "\n";
   }
   else if(II == Ident_path) {
     Lex(Tok); // eat the 'path'
@@ -2400,11 +2379,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         pfnAddFile(pathName);
       }
     }
-    llvm::outs() << "Found a #using path directive for path '" << pathName << "'";
-    if(recursive) {
-      llvm::outs() << " recursive";
-    }
-    llvm::outs() << "\n";
   }
   else if(II == Ident_option) {
     Lex(Tok); // eat the 'option'
@@ -2439,8 +2413,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
     if(FrontendOpts) {
       FrontendOpts->PackageOptions[Key->getName()] = Value;
     }
-
-    llvm::outs() << "Found a #using option directive Key = '" << Key->getName().str() << "' Value = '" << Value << "'\n";
   }
 }
 

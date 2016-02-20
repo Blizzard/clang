@@ -915,6 +915,8 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
       }
 
 
+      llvm::errs() << "Building '" << FIF.getFile() << "'\n";
+
       // TODO:
       // * If the user has specified a language standard for their file, we should respect it for their files.
       // * If this is a file from a #using path directive, we should use the requested language standard, if the language family matches the input file(s).
