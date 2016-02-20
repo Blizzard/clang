@@ -45,6 +45,7 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include <sys/stat.h>
 #include <system_error>
 #include <time.h>
@@ -833,17 +834,30 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
   bool InitialInput = true;
   std::vector<FrontendInputFile> AllInputs;
   std::unique_ptr<llvm::raw_fd_ostream> LinkerFileListStream = nullptr;
+  std::set<std::string> PreviouslyBuiltFiles;
 
   if(!getFileSystemOpts().LinkerFileList.empty())
   {
-    int WriteFD = -1;
-    auto ec = llvm::sys::fs::openFileForWrite(getFileSystemOpts().LinkerFileList, WriteFD, llvm::sys::fs::F_Append);
-    if(ec)
     {
-      return false;
+      auto MemBuf = llvm::MemoryBuffer::getFile(getFileSystemOpts().LinkerFileList);
+      if(MemBuf) {
+        SmallVector<StringRef, 100> ExistingFiles;
+        MemBuf.get()->getBuffer().split(ExistingFiles, '\n');
+        for(const auto& ExistingFile : ExistingFiles) {
+          PreviouslyBuiltFiles.insert(ExistingFile.trim().trim("\""));
+        }
+      }
     }
 
-    LinkerFileListStream.reset(new llvm::raw_fd_ostream(WriteFD, true));
+    {
+      int WriteFD = -1;
+      auto ec = llvm::sys::fs::openFileForWrite(getFileSystemOpts().LinkerFileList, WriteFD, llvm::sys::fs::F_Append);
+      if(ec) {
+        return false;
+      }
+
+      LinkerFileListStream.reset(new llvm::raw_fd_ostream(WriteFD, true));
+    }
   }
 
   auto GetLanguageFamily = [](InputKind K) {
@@ -887,6 +901,12 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
       if(!InitialInput) {
         getFrontendOpts().OutputFile = FIF.getFile();
         getFrontendOpts().OutputFile += ".o";
+
+        if(PreviouslyBuiltFiles.find(getFrontendOpts().OutputFile) != PreviouslyBuiltFiles.end()) {
+          continue;
+        }
+
+        PreviouslyBuiltFiles.insert(getFrontendOpts().OutputFile);
 
         if(LinkerFileListStream)
         {
