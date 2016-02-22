@@ -2216,27 +2216,38 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
             if(Key == "INCLUDE") {
               llvm::yaml::SequenceNode *Roots = dyn_cast<llvm::yaml::SequenceNode>(I->getValue());
+              SmallString<128> IncludeBuffer;
+              bool ValueIsSingleString = false;
               if(!Roots) {
-                break;
-              }
-
-              bool ReadIncludesSuccess = true;
-              for(llvm::yaml::SequenceNode::iterator I = Roots->begin(), E = Roots->end(); I != E; ++I) {
-                SmallString<128> IncludeBuffer;
                 StringRef IncludeFile;
-                if(!parseScalarString(I, IncludeFile, IncludeBuffer)) {
-                  ReadIncludesSuccess = false;
+                if(parseScalarString(I->getValue(), IncludeFile, IncludeBuffer)) {
+                  DefaultIncludeFiles.push_back(IncludeFile);
+                  ValueIsSingleString = true;
+                }
+                else {
                   break;
                 }
-
-                DefaultIncludeFiles.push_back(IncludeFile);
               }
 
-              if(!ReadIncludesSuccess) {
-                break;
+              if(!ValueIsSingleString) {
+                bool ReadIncludesSuccess = true;
+                for(llvm::yaml::SequenceNode::iterator I = Roots->begin(), E = Roots->end(); I != E; ++I) {
+                  StringRef IncludeFile;
+                  if(!parseScalarString(I, IncludeFile, IncludeBuffer)) {
+                    ReadIncludesSuccess = false;
+                    break;
+                  }
+
+                  DefaultIncludeFiles.push_back(IncludeFile);
+                }
+
+                if(!ReadIncludesSuccess) {
+                  break;
+                }
               }
             }
             else if(Key == "VERSION") { /* Ignore for now... */ }
+            else if(Key == "IMPORT") { /* Ignore for now... */ }
             else {
               llvm_unreachable("key missing from Keys");
             }
