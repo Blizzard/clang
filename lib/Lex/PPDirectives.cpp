@@ -2036,7 +2036,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
     if(FrontendOpts)
     {
       enum class PackageType { NotAPackage, Directory, ZipFile };
-      auto GetPackageType = [](std::string& PackagePath) -> PackageType {
+      auto GetPackageType = [](auto& PackagePath) -> PackageType {
         if(llvm::sys::fs::is_directory(PackagePath)) {
           return PackageType::Directory;
         }
@@ -2055,7 +2055,8 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       };
 
       PackageType FoundPackageType = PackageType::NotAPackage;
-      std::string PackagePath = "./" + entry.Name;
+      SmallString<260> PackagePath = "./" + entry.Name;
+      llvm::sys::fs::make_absolute(PackagePath);
       if((FoundPackageType = GetPackageType(PackagePath)) == PackageType::NotAPackage) {
         for(auto& Package : FrontendOpts->PackageSearchPaths) {
           PackagePath = Package + "/" + entry.Name;
@@ -2177,9 +2178,9 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       }
 
       std::vector<std::string> DefaultIncludeFiles;
-      std::string ManifestFileName = PackagePath + "/MANIFEST";
+      auto ManifestFileName = PackagePath + "/MANIFEST";
       if(llvm::sys::fs::is_regular_file(ManifestFileName)) {
-        auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName);
+        auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName.str());
         if(ManifestFileBuffer) {
           llvm::SourceMgr SM;
           llvm::yaml::Stream ManifestStream(ManifestFileBuffer.get()->getBuffer(), SM);
@@ -2260,7 +2261,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       std::vector<std::string> ExtraIncludePaths;
       std::vector<std::string> ExtraSources;
 
-      std::deque<std::string> PackagePaths{ PackagePath };
+      std::deque<std::string> PackagePaths{ PackagePath.str() };
       while(!PackagePaths.empty()) {
         std::string PackageEntryPath = PackagePaths.front();
         PackagePaths.pop_front();
