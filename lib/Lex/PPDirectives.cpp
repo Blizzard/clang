@@ -2324,8 +2324,16 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         FileID FID = SourceMgr.createFileID(File, IncludePos, FileCharacter);
         assert(FID.isValid() && "Expected valid file ID");
 
-        if(EnterSourceFile(FID, CurDir, Tok.getLocation()))
-          return;
+        PushIncludeQueue(FID, CurDir, Tok.getLocation());
+      }
+
+      if(!PopIncludeQueue()) {
+        const char* FileName = "<Unknown>";
+        auto FileEntry = SourceMgr.getFileEntryForID(IncludeQueue.front().TheFileID);
+        if(FileEntry) {
+          FileName = FileEntry->getName();
+        }
+        Diag(IncludeQueue.front().TheSourceLocation, diag::err_pp_error_opening_file) << FileName << "Could not enter source file";
       }
 
       for(auto& SourceFile : ExtraSources)

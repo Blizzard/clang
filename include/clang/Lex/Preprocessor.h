@@ -34,6 +34,7 @@
 #include "llvm/Support/Allocator.h"
 #include <memory>
 #include <vector>
+#include <deque>
 
 namespace llvm {
   template<unsigned InternalLen> class SmallString;
@@ -364,6 +365,17 @@ class Preprocessor : public RefCountedBase<Preprocessor> {
           TheDirLookup(std::move(RHS.TheDirLookup)) {}
   };
   std::vector<IncludeStackInfo> IncludeMacroStack;
+
+
+  /// \brief Keeps track a queue of files that we are going to include
+  /// after the current one is finished.
+  struct IncludeQueueInfo {
+    FileID                      TheFileID;
+    const DirectoryLookup      *TheDirLookup;
+    SourceLocation              TheSourceLocation;
+  };
+
+  std::deque<IncludeQueueInfo> IncludeQueue;
 
   /// \brief Actions invoked when some preprocessor activity is
   /// encountered (e.g. a file is \#included, etc).
@@ -1668,6 +1680,23 @@ public:
                       bool *ShadowFlag = nullptr);
 
 private:
+
+  void PushIncludeQueue(FileID CurFileID, const DirectoryLookup *Dir,
+                        SourceLocation Loc) {
+    IncludeQueue.push_back(IncludeQueueInfo{ CurFileID, Dir, Loc });
+  }
+
+  bool PopIncludeQueue() {
+    if(!IncludeQueue.empty()) {
+      bool Success = !EnterSourceFile(IncludeQueue.front().TheFileID, IncludeQueue.front().TheDirLookup,
+        IncludeQueue.front().TheSourceLocation);
+      if(Success) {
+        IncludeQueue.pop_front();
+      }
+      return Success;
+    }
+    return true;
+  }
 
   void PushIncludeMacroStack() {
     assert(CurLexerKind != CLK_CachingLexer && "cannot push a caching lexer");

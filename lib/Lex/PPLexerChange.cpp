@@ -430,6 +430,15 @@ bool Preprocessor::HandleEndOfFile(Token &Result, bool isEndOfMacro) {
                              PPCallbacks::ExitFile, FileType, ExitedFID);
     }
 
+    if(!PopIncludeQueue()) {
+      const char* FileName = "<Unknown>";
+      auto FileEntry = SourceMgr.getFileEntryForID(IncludeQueue.front().TheFileID);
+      if(FileEntry) {
+        FileName = FileEntry->getName();
+      }
+      Diag(IncludeQueue.front().TheSourceLocation, diag::err_pp_error_opening_file) << FileName << "Could not enter source file";
+    }
+
     // Client should lex another token unless we generated an EOM.
     return LeavingSubmodule;
   }
