@@ -2250,7 +2250,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
             else if(Key == "VERSION") { /* Ignore for now... */ }
             else if(Key == "IMPORT") { /* Ignore for now... */ }
             else {
-              llvm_unreachable("key missing from Keys");
+              // Do nothing for now.  Maybe output a note?
             }
           }
         }
@@ -2313,6 +2313,8 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
         if(!File) {
           Diag(Tok, diag::err_pp_file_not_found) << IncludeFile;
+          DiscardUntilEndOfDirective();
+          return;
         }
 
         SourceLocation IncludePos = Tok.getLocation();
