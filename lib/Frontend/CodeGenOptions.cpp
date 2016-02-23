@@ -29,4 +29,13 @@ bool CodeGenOptions::isNoBuiltinFunc(const char *Name) const {
   return false;
 }
 
+void CodeGenOptions::getHash(llvm::MD5::MD5Result& HashResult) const {
+  llvm::MD5 md5;
+
+#define CODEGENOPT(Name, Bits, Default) { uint32_t val = Name; ArrayRef<uint8_t> OptionsArray(reinterpret_cast<const uint8_t*>(&val), sizeof(uint32_t)); md5.update(OptionsArray); }
+#include "clang/Frontend/CodeGenOptions.def"
+
+  md5.final(HashResult);
+}
+
 }  // end namespace clang

@@ -16,6 +16,7 @@
 
 #include "clang/Basic/Sanitizers.h"
 #include "llvm/Support/Regex.h"
+#include "llvm/Support/MD5.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -238,6 +239,8 @@ public:
   const std::vector<std::string> &getNoBuiltinFuncs() const {
     return NoBuiltinFuncs;
   }
+
+  void getHash(llvm::MD5::MD5Result& HashResult) const;
 };
 
 }  // end namespace clang

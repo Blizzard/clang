@@ -101,17 +101,23 @@ class FrontendInputFile {
   /// \brief Force this file to compile with optimizations turned on.
   bool ForceCompileOptimized;
 
+  /// \brief Override the output path for the intermediate files
+  std::string PackagePath;
+
 public:
   FrontendInputFile() : Buffer(nullptr), Kind(IK_None), IsSystem(false) { }
   FrontendInputFile(StringRef File, InputKind Kind, bool IsSystem = false,
                     const std::vector<std::string>& ExtraHeaders = {},
                     bool IgnoreWarnings = false,
-                    bool ForceCompileOptimized = false)
+                    bool ForceCompileOptimized = false,
+                    const std::string& PackagePath = "")
     : File(File.str()), Buffer(nullptr), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders),
-      IgnoreWarnings(IgnoreWarnings), ForceCompileOptimized(ForceCompileOptimized) { }
+      IgnoreWarnings(IgnoreWarnings), ForceCompileOptimized(ForceCompileOptimized),
+      PackagePath(PackagePath) { }
   FrontendInputFile(llvm::MemoryBuffer *buffer, InputKind Kind,
                     bool IsSystem = false, const std::vector<std::string>& ExtraHeaders = {})
-    : Buffer(buffer), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders) { }
+    : Buffer(buffer), Kind(Kind), IsSystem(IsSystem), ExtraHeaders(ExtraHeaders),
+      IgnoreWarnings(false), ForceCompileOptimized(false) { }
 
   InputKind getKind() const { return Kind; }
   bool isSystem() const { return IsSystem; }
@@ -133,6 +139,9 @@ public:
 
   const std::vector<std::string>& getExtraHeaders() const {
     return ExtraHeaders;
+  }
+  const std::string& getPackagePath() const {
+    return PackagePath;
   }
 };
 

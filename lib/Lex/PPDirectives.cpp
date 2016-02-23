@@ -1986,7 +1986,11 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
-  auto pfnAddFile = [this](const std::string& PathName, const std::vector<std::string>& IncludePaths = {}, bool IsFromPackage = false) {
+  auto pfnAddFile = [this](
+    const std::string& PathName,
+    const std::vector<std::string>& IncludePaths = {},
+    bool IsFromPackage = false,
+    const std::string& PackagePath = "") {
     // I want to use FrontEndOptions::getInputKindForExtension(), but there are two problems:
     // 1.) The default case for that is IK_C, which doesn't have the behavior that I want.
     // 2.) Unit tests have link issues due to undefined symbols, which I do not care to fix.
@@ -2011,7 +2015,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       .Default(IK_None);
 
     if(ik != IK_None) {
-      FrontendInputFile FIF{ PathName, ik, false, IncludePaths, IsFromPackage, IsFromPackage };
+      FrontendInputFile FIF{ PathName, ik, false, IncludePaths, IsFromPackage, IsFromPackage, PackagePath };
       FrontendOpts->ExtraInputs.push_back(std::move(FIF));
     }
   };
@@ -2338,7 +2342,7 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
       for(auto& SourceFile : ExtraSources)
       {
-        pfnAddFile(SourceFile, ExtraIncludePaths, true);
+        pfnAddFile(SourceFile, ExtraIncludePaths, true, PackagePath.str());
       }
     }
   }

@@ -888,6 +888,12 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
     }
   };
 
+  llvm::MD5::MD5Result CodeGenOptionsHash;
+  getCodeGenOpts().getHash(CodeGenOptionsHash);
+
+  SmallString<32> CodeGenOptionsHashResult;
+  llvm::MD5::stringifyResult(CodeGenOptionsHash, CodeGenOptionsHashResult);
+
   do 
   {
     getFrontendOpts().Inputs.insert(getFrontendOpts().Inputs.end(), getFrontendOpts().ExtraInputs.begin(), getFrontendOpts().ExtraInputs.end());
@@ -902,6 +908,12 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
       if(!InitialInput) {
         SmallString<260> OutputFile = FIF.getFile();
         llvm::sys::path::replace_extension(OutputFile, clang::driver::types::getTypeTempSuffix(clang::driver::types::TY_Object, getLangOpts().MSVCCompat));
+        if(!FIF.getPackagePath().empty()) {
+          std::string FileName = llvm::sys::path::filename(OutputFile);
+          OutputFile = FIF.getPackagePath() + "/obj/" + CodeGenOptionsHashResult.str().str();
+          llvm::sys::fs::create_directories(OutputFile);
+          OutputFile += "/" + FileName;
+        }
         getFrontendOpts().OutputFile = OutputFile.str();
 
         if(PreviouslyBuiltFiles.find(getFrontendOpts().OutputFile) != PreviouslyBuiltFiles.end()) {
