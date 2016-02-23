@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <system_error>
 #include <time.h>
+#include "clang/Driver/Types.h"
 
 using namespace clang;
 
@@ -899,8 +900,9 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
         getSourceManager().clearIDTables();
 
       if(!InitialInput) {
-        getFrontendOpts().OutputFile = FIF.getFile();
-        getFrontendOpts().OutputFile += ".o";
+        SmallString<260> OutputFile = FIF.getFile();
+        llvm::sys::path::replace_extension(OutputFile, clang::driver::types::getTypeTempSuffix(clang::driver::types::TY_Object, getLangOpts().MSVCCompat));
+        getFrontendOpts().OutputFile = OutputFile.str();
 
         if(PreviouslyBuiltFiles.find(getFrontendOpts().OutputFile) != PreviouslyBuiltFiles.end()) {
           continue;
