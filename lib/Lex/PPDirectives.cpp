@@ -2072,7 +2072,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
       if(FoundPackageType == PackageType::NotAPackage) {
         Diag(Tok, diag::err_pp_file_not_found) << entry.Name;
-        DiscardUntilEndOfDirective();
         return;
       }
 
@@ -2080,7 +2079,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         SmallString<260> PackageCacheDir;
         if(!llvm::sys::path::user_cache_directory(PackageCacheDir, "clang", "packages", entry.Name)) {
           Diag(Tok, diag::err_cannot_open_file) << entry.Name << "Cannot get user cache directory";
-          DiscardUntilEndOfDirective();
           return;
         }
 
@@ -2089,14 +2087,12 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
           unzFile f = unzOpen64(PackagePath.c_str());
           if(!f) {
             Diag(Tok, diag::err_package_file_format) << PackagePath;
-            DiscardUntilEndOfDirective();
             return;
           }
 
           unz_global_info64 tGlobalInfo;
           if(unzGetGlobalInfo64(f, &tGlobalInfo) != UNZ_OK) {
             Diag(Tok, diag::err_package_file_read) << PackagePath;
-            DiscardUntilEndOfDirective();
             return;
           }
 
@@ -2107,7 +2103,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
             if(unzGetCurrentFileInfo64(f, &tFileInfo, pszFileName, 512, nullptr, 0, nullptr, 0) != UNZ_OK) {
               Diag(Tok, diag::err_package_file_read) << PackagePath;
-              DiscardUntilEndOfDirective();
               return;
             }
 
@@ -2121,7 +2116,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
               // It's a file...
               if(unzOpenCurrentFile(f) != UNZ_OK) {
                 Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
-                DiscardUntilEndOfDirective();
                 return;
               }
 
@@ -2130,7 +2124,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
               EC = llvm::sys::fs::openFileForWrite(strFullFilePath, FileFD, llvm::sys::fs::F_None);
               if(EC) {
                 Diag(Tok, diag::err_cannot_open_file) << strFullFilePath << EC.message();
-                DiscardUntilEndOfDirective();
                 return;
               }
 
@@ -2144,7 +2137,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
                   FileStream.write(reinterpret_cast<char*>(FileData.data()), BytesRead);
                   if(FileStream.has_error()) {
                     Diag(Tok, diag::err_package_file_write_temp) << strFullFilePath << PackagePath;
-                    DiscardUntilEndOfDirective();
                     return;
                   }
                 }
@@ -2153,14 +2145,12 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
                 }
                 else {
                   Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
-                  DiscardUntilEndOfDirective();
                   return;
                 }
               }
 
               if(unzCloseCurrentFile(f) != UNZ_OK) {
                 Diag(Tok, diag::err_package_subfile_read) << strFileName << PackagePath;
-                DiscardUntilEndOfDirective();
                 return;
               }
             }
@@ -2171,14 +2161,12 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
             }
             else if(GotoNextFileResult != UNZ_OK) {
               Diag(Tok, diag::err_package_file_read) << PackagePath;
-              DiscardUntilEndOfDirective();
               return;
             }
           }
 
           if(unzClose(f) != UNZ_OK) {
             Diag(Tok, diag::err_package_file_read) << PackagePath;
-            DiscardUntilEndOfDirective();
             return;
           }
         }
@@ -2323,7 +2311,6 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
 
         if(!File) {
           Diag(Tok, diag::err_pp_file_not_found) << IncludeFile;
-          DiscardUntilEndOfDirective();
           return;
         }
 
