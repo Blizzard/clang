@@ -2070,6 +2070,12 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
         }
       }
 
+      if(FoundPackageType == PackageType::NotAPackage) {
+        Diag(Tok, diag::err_pp_file_not_found) << entry.Name;
+        DiscardUntilEndOfDirective();
+        return;
+      }
+
       if(FoundPackageType == PackageType::ZipFile) {
         SmallString<260> PackageCacheDir;
         if(!llvm::sys::path::user_cache_directory(PackageCacheDir, "clang", "packages", entry.Name)) {
@@ -2182,9 +2188,9 @@ void Preprocessor::HandleUsingDirective(Token &Tok) {
       }
 
       std::vector<std::string> DefaultIncludeFiles;
-      auto ManifestFileName = PackagePath + "/MANIFEST";
+      auto ManifestFileName = PackagePath.str().str() + "/MANIFEST";
       if(llvm::sys::fs::is_regular_file(ManifestFileName)) {
-        auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName.str());
+        auto ManifestFileBuffer = FileMgr.getBufferForFile(ManifestFileName);
         if(ManifestFileBuffer) {
           llvm::SourceMgr SM;
           llvm::yaml::Stream ManifestStream(ManifestFileBuffer.get()->getBuffer(), SM);
