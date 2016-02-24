@@ -926,6 +926,24 @@ bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
         {
           *LinkerFileListStream << '"' << getFrontendOpts().OutputFile << "\"\n";
         }
+
+#if 0
+        // Damn...  This doesn't work.  If I have a #using path for a file that itself does a #using path,
+        // I have no way of knowing that unless I write the data somewhere.
+        // Similarly, if I have a #using package, and the package itself has a #using package directive,
+        // I have no way of knowing that unless I write the data somwehere.
+        // So, we can't just do this naively, because a single input file may bring in one or more other
+        // files.
+        llvm::sys::fs::file_status InputFileStatus;
+        llvm::sys::fs::file_status OutputFileStatus;
+        llvm::sys::fs::status(FIF.getFile(), InputFileStatus);
+        llvm::sys::fs::status(getFrontendOpts().OutputFile, OutputFileStatus);
+
+        if(OutputFileStatus.getLastModificationTime() > InputFileStatus.getLastModificationTime()) {
+          llvm::errs() << "Skipping '" << FIF.getFile() << "' because it is already built\n";
+          continue;
+        }
+#endif
       }
 
 
